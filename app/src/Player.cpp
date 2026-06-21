@@ -1,4 +1,5 @@
 #include "Player.hpp"
+#include <algorithm>
 
 Player::Player() {
     shape.setFillColor(sf::Color::Green);
@@ -50,7 +51,12 @@ void Player::update(float dt) {
         return;
     }
 
-    vel.x = dir * SPEED;
+    if (on_ground) {
+        vel.x = dir * SPEED;
+    } else if (dir != 0) {
+        float target = dir * SPEED;
+        vel.x += (target - vel.x) * std::min(1.0f, AIR_ACCEL * dt);
+    }
     vel.y += GRAVITY * dt;
     pos += vel * dt;
 

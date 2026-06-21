@@ -2,6 +2,9 @@
 #include <SFML/Window/Keyboard.hpp>
 #include <SFML/Window/Mouse.hpp>
 #include <cmath>
+#include <fstream>
+#include <cstdlib>
+#include <ctime>
 
 int Game::get_stage() const {
     return crowns + 1;
@@ -16,6 +19,8 @@ void Game::setup_stage() {
 
     std::vector<float> ys;
     if (stage == 1)
+        ys = {140.f, 710.f};
+    else if (stage == 2)
         ys = {140.f, 330.f, 520.f, 710.f};
     else
         ys = {140.f, 254.f, 368.f, 482.f, 596.f, 710.f};
@@ -31,8 +36,8 @@ void Game::setup_stage() {
 
     platform_segments.resize(platforms.size(), std::vector<bool>(10, true));
 
-    if (stage >= 3) {
-        int num_with_holes = stage - 2;
+    if (stage >= 4) {
+        int num_with_holes = stage - 3;
         if (num_with_holes > (int)platforms.size())
             num_with_holes = (int)platforms.size();
         for (int h = 0; h < num_with_holes; h++) {
@@ -57,10 +62,54 @@ bool Game::is_solid(int pi, int s) const {
     return pi < (int)platform_segments.size() && s < 10 && platform_segments[pi][s];
 }
 
+std::string Game::fmt_time(float t) {
+    if (t < 0) return "NONE";
+    int mins = int(t) / 60;
+    int secs = int(t) % 60;
+    int hs = int((t - int(t)) * 100);
+    char buf[16];
+    std::snprintf(buf, sizeof(buf), "%02d:%02d.%02d", mins, secs, hs);
+    return buf;
+}
+
+void Game::load_records() {
+    std::ifstream f("assets/times.dat");
+    if (!f.is_open()) return;
+    for (int i = 0; i < 9; i++) f >> records.stage_times[i];
+    f >> records.overall_time;
+}
+
+void Game::save_records() {
+    std::ofstream f("assets/times.dat");
+    if (!f.is_open()) return;
+    for (int i = 0; i < 9; i++) f << records.stage_times[i] << "\n";
+    f << records.overall_time;
+}
+
+void Game::play_random_music() {
+    music.stop();
+    std::vector<std::string> songs;
+    for (int i = 1; i <= 99; i++) {
+        std::string p = "assets/music/track" + std::to_string(i) + ".mp3";
+        std::ifstream f(p);
+        if (f.is_open()) { songs.push_back(p); f.close(); }
+        else break;
+    }
+    if (!songs.empty()) {
+        int idx = std::rand() % songs.size();
+        if (music.openFromFile(songs[idx])) {
+            music.setLooping(true);
+            music.setVolume(muted ? 0.f : 15.f);
+            music.play();
+        }
+    }
+}
+
 Game::Game()
     : window(sf::VideoMode({800u, 750u}), "Donkey Kong") {
 
     window.setFramerateLimit(60);
+    std::srand((unsigned)std::time(nullptr));
 
     bool font_ok = font.openFromFile("assets/fonts/arial.ttf");
     if (!font_ok) font_ok = font.openFromFile("assets/fonts/DejaVuSans.ttf");
@@ -116,6 +165,30 @@ Game::Game()
     stage_text.setCharacterSize(18);
     stage_text.setFillColor(sf::Color{180, 180, 200});
 
+    play_random_music();
+
+    // Mute button (top-left)
+    mute_btn.setSize({22, 22});
+    mute_btn.setFillColor(sf::Color{80, 80, 80, 180});
+    mute_btn.setPosition({8, 10});
+    mute_text.setString("M");
+    mute_text.setCharacterSize(14);
+    mute_text.setFillColor(sf::Color::White);
+    auto mb = mute_text.getLocalBounds();
+    mute_text.setOrigin({mb.position.x + mb.size.x / 2, mb.position.y + mb.size.y / 2});
+    mute_text.setPosition({19, 21});
+
+    time_text.setCharacterSize(14);
+    time_text.setFillColor(sf::Color::White);
+    record_text.setCharacterSize(14);
+    record_text.setFillColor(sf::Color::White);
+    overall_rec_text.setCharacterSize(14);
+    overall_rec_text.setFillColor(sf::Color::Yellow);
+    stage_rec_text.setCharacterSize(14);
+    stage_rec_text.setFillColor(sf::Color::Yellow);
+
+    load_records();
+
     [[maybe_unused]] bool bg_ok = bg_tex.loadFromFile("assets/sprites/background.png");
     [[maybe_unused]] bool p_ok = plat_tex.loadFromFile("assets/sprites/platform.png");
     [[maybe_unused]] bool lt_ok = ladder_tex.loadFromFile("assets/sprites/ladder.png");
@@ -146,6 +219,7 @@ void Game::start_game() {
         else
             barrels.push_back(std::make_unique<Barrel>(728.f, y, -180.f, lvl));
     }
+    stage_timer = 0;
 }
 
 void Game::run() {
@@ -162,22 +236,40 @@ void Game::run() {
 void Game::handle_input(float dt) {
     pause_cd -= dt;
     while (auto ev = window.pollEvent()) {
-        if (ev->is<sf::Event::Closed>())
+        if (ev->is<sf::Event::Closed>()) {
+            save_records();
             window.close();
+        }
 
         if (auto* mb = ev->getIf<sf::Event::MouseButtonPressed>()) {
             sf::Vector2f wp = window.mapPixelToCoords(mb->position);
 
+            if (mute_btn.getGlobalBounds().contains(wp)) {
+                muted = !muted;
+                music.setVolume(muted ? 0.f : 15.f);
+            }
+
             if (state == State::Playing && paused) {
                 if (pause_resume_btn.getGlobalBounds().contains(wp))
                     paused = false;
-                else if (pause_reset_btn.getGlobalBounds().contains(wp))
+                if (pause_reset_btn.getGlobalBounds().contains(wp)) {
+                    overall_timer = 0;
                     start_game();
+                }
             }
 
             if (state == State::Menu || state == State::GameOver || state == State::Won) {
-                if (menu_btn.getGlobalBounds().contains(wp))
+                if (state == State::Won && pause_reset_btn.getGlobalBounds().contains(wp)) {
+                    overall_timer = 0;
+                    play_random_music();
                     start_game();
+                } else if (menu_btn.getGlobalBounds().contains(wp)) {
+                    if (state == State::GameOver || (state == State::Won && crowns >= 9)) {
+                        overall_timer = 0;
+                        play_random_music();
+                    }
+                    start_game();
+                }
             }
         }
     }
@@ -187,14 +279,12 @@ void Game::handle_input(float dt) {
     if (skip_cd <= 0) {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::U)) {
             if (crowns > 0) crowns--;
-            else crowns = 0;
-            setup_stage();
+            start_game();
             skip_cd = 0.3f;
         }
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::I)) {
             if (crowns < 8) crowns++;
-            else crowns = 8;
-            setup_stage();
+            start_game();
             skip_cd = 0.3f;
         }
     }
@@ -253,6 +343,8 @@ void Game::handle_input(float dt) {
 void Game::update(float dt) {
     lava_anim += dt * 30.f;
     if (lava_anim > 800) lava_anim = 0;
+    overall_timer += dt;
+    stage_timer += dt;
 
     player.update(dt);
 
@@ -295,7 +387,6 @@ void Game::update(float dt) {
                         }
                     }
                     if (on_solid) {
-                        // Clamp to full platform bounds, not segment boundaries
                         auto ppos = platforms[pi].get_bounds();
                         float p_left  = ppos.position.x + 12;
                         float p_right = ppos.position.x + ppos.size.x - 12;
@@ -308,7 +399,7 @@ void Game::update(float dt) {
                     }
                 }
             }
-            }
+        }
         if (!on_any)
             player.set_on_ground(false);
     }
@@ -374,14 +465,23 @@ void Game::update(float dt) {
         state = State::GameOver;
         player.set_dead(true);
         crowns = 0;
+        play_random_music();
     }
 
     // Win: player reached top platform near princess
     if (!platforms.empty()) {
         float top_y = platforms[0].get_bounds().position.y;
         if (player.get_pos().y < top_y + 30 && player.get_pos().x < 150 && state == State::Playing) {
-            state = State::Won;
             crowns++;
+            int si = stage - 1;
+            if (stage_timer < records.stage_times[si] || records.stage_times[si] < 0)
+                records.stage_times[si] = stage_timer;
+            if (crowns >= 9) {
+                if (overall_timer < records.overall_time || records.overall_time < 0)
+                    records.overall_time = overall_timer;
+            }
+            save_records();
+            state = State::Won;
         }
     }
 }
@@ -398,6 +498,7 @@ void Game::check_collisions() {
             state = State::GameOver;
             player.set_dead(true);
             crowns = 0;
+            play_random_music();
             return;
         }
     }
@@ -557,6 +658,43 @@ void Game::draw() {
     crowns_text.setOrigin({crowns_text.getLocalBounds().size.x, 0});
     window.draw(crowns_text);
 
+    // Mute button (top-left)
+    window.draw(mute_btn);
+    window.draw(mute_text);
+
+    // Timer display (middle-top)
+    {
+        time_text.setString("OVERALL  " + fmt_time(overall_timer));
+        auto ot = time_text.getLocalBounds();
+        time_text.setOrigin({ot.size.x / 2, 0});
+        time_text.setPosition({400, 8});
+        window.draw(time_text);
+
+        float orec = records.overall_time;
+        if (orec >= 0) {
+            overall_rec_text.setString("RECORD   " + fmt_time(orec));
+            auto ort = overall_rec_text.getLocalBounds();
+            overall_rec_text.setOrigin({ort.size.x / 2, 0});
+            overall_rec_text.setPosition({400, 24});
+            window.draw(overall_rec_text);
+        }
+
+        record_text.setString("STAGE    " + fmt_time(stage_timer));
+        auto st = record_text.getLocalBounds();
+        record_text.setOrigin({st.size.x / 2, 0});
+        record_text.setPosition({400, 44});
+        window.draw(record_text);
+
+        float srec = records.stage_times[stage - 1];
+        if (srec >= 0) {
+            stage_rec_text.setString("RECORD   " + fmt_time(srec));
+            auto srt = stage_rec_text.getLocalBounds();
+            stage_rec_text.setOrigin({srt.size.x / 2, 0});
+            stage_rec_text.setPosition({400, 60});
+            window.draw(stage_rec_text);
+        }
+    }
+
     if (paused) {
         sf::RectangleShape overlay({800, 750});
         overlay.setFillColor(sf::Color{0, 0, 0, 150});
@@ -586,41 +724,107 @@ void Game::draw() {
     }
 
     if (state == State::Won) {
-        if (crowns >= 9) {
+        int si = stage - 1;
+        float prev_stage = records.stage_times[si];
+        bool new_stage_rec = (stage_timer < prev_stage || prev_stage < 0);
+        bool new_overall_rec = false;
+        if (crowns >= 9 && (overall_timer < records.overall_time || records.overall_time < 0))
+            new_overall_rec = true;
+
+        // Title
+        if (crowns >= 9)
             status_text.setString("CONGRATULATIONS!");
-            status_text.setPosition({200, 160});
-            window.draw(status_text);
-            sf::Text congrats_text(font);
-            congrats_text.setString("You completed the Donkey Kong challenge!");
-            congrats_text.setCharacterSize(22);
-            congrats_text.setFillColor(sf::Color::White);
-            auto ct = congrats_text.getLocalBounds();
-            congrats_text.setOrigin({ct.position.x + ct.size.x / 2, ct.position.y + ct.size.y / 2});
-            congrats_text.setPosition({400, 230});
-            window.draw(congrats_text);
-            std::string cstr = "CROWNS: " + std::to_string(crowns);
-            crowns_text.setString(cstr);
-            crowns_text.setPosition({400, 280});
-            crowns_text.setOrigin({crowns_text.getLocalBounds().size.x / 2, 0});
-            window.draw(crowns_text);
-            menu_btn_text.setString("PLAY AGAIN");
-        } else {
-            status_text.setString("YOU WIN!");
-            status_text.setPosition({300, 200});
-            window.draw(status_text);
-            std::string cstr = "CROWNS: " + std::to_string(crowns);
-            crowns_text.setString(cstr);
-            crowns_text.setPosition({400, 260});
-            crowns_text.setOrigin({crowns_text.getLocalBounds().size.x / 2, 0});
-            window.draw(crowns_text);
-            menu_btn_text.setString("NEXT STAGE");
+        else
+            status_text.setString("STAGE COMPLETE!");
+        auto stb = status_text.getLocalBounds();
+        status_text.setOrigin({stb.size.x / 2, 0});
+        status_text.setPosition({400, 120});
+        window.draw(status_text);
+
+        // Stage time
+        sf::Text st_time(font);
+        st_time.setCharacterSize(18);
+        std::string st_line = "STAGE TIME:   " + fmt_time(stage_timer);
+        if (new_stage_rec) st_line += "   NEW RECORD!";
+        st_time.setString(st_line);
+        st_time.setFillColor(new_stage_rec ? sf::Color::Yellow : sf::Color::White);
+        auto stt = st_time.getLocalBounds();
+        st_time.setOrigin({stt.size.x / 2, 0});
+        st_time.setPosition({400, 180});
+        window.draw(st_time);
+
+        // Stage record
+        if (prev_stage >= 0) {
+            sf::Text prev_st(font);
+            prev_st.setString("BEST:         " + fmt_time(prev_stage));
+            prev_st.setCharacterSize(18);
+            prev_st.setFillColor(sf::Color{180, 180, 200});
+            auto pst = prev_st.getLocalBounds();
+            prev_st.setOrigin({pst.size.x / 2, 0});
+            prev_st.setPosition({400, 205});
+            window.draw(prev_st);
         }
-        menu_btn.setPosition({400, 340});
+
+        // Overall time (only for stage 9, always show as context)
+        if (crowns >= 9) {
+            sf::Text ov_text(font);
+            ov_text.setCharacterSize(18);
+            std::string ov_line = "OVERALL TIME: " + fmt_time(overall_timer);
+            if (new_overall_rec) ov_line += "   NEW RECORD!";
+            ov_text.setString(ov_line);
+            ov_text.setFillColor(new_overall_rec ? sf::Color::Yellow : sf::Color::White);
+            auto ovt = ov_text.getLocalBounds();
+            ov_text.setOrigin({ovt.size.x / 2, 0});
+            ov_text.setPosition({400, 240});
+            window.draw(ov_text);
+
+            if (records.overall_time >= 0) {
+                sf::Text prev_ov(font);
+                prev_ov.setString("BEST:         " + fmt_time(records.overall_time));
+                prev_ov.setCharacterSize(18);
+                prev_ov.setFillColor(sf::Color{180, 180, 200});
+                auto povt = prev_ov.getLocalBounds();
+                prev_ov.setOrigin({povt.size.x / 2, 0});
+                prev_ov.setPosition({400, 265});
+                window.draw(prev_ov);
+            }
+        } else {
+            sf::Text ov_text(font);
+            ov_text.setCharacterSize(18);
+            ov_text.setString("OVERALL: " + fmt_time(overall_timer));
+            ov_text.setFillColor(sf::Color::White);
+            auto ovt = ov_text.getLocalBounds();
+            ov_text.setOrigin({ovt.size.x / 2, 0});
+            ov_text.setPosition({400, 240});
+            window.draw(ov_text);
+        }
+
+        // Stage number
+        std::string sstr = std::to_string(stage);
+        stage_text.setString(sstr);
+        stage_text.setPosition({770, 10});
+        stage_text.setOrigin({stage_text.getLocalBounds().size.x, 0});
+        window.draw(stage_text);
+
+        // Buttons
+        menu_btn.setPosition({280, 340});
+        if (crowns >= 9)
+            menu_btn_text.setString("PLAY AGAIN");
+        else
+            menu_btn_text.setString("NEXT STAGE");
         auto mt = menu_btn_text.getLocalBounds();
         menu_btn_text.setOrigin({mt.position.x + mt.size.x / 2, mt.position.y + mt.size.y / 2});
-        menu_btn_text.setPosition({400, 340});
+        menu_btn_text.setPosition({280, 340});
         window.draw(menu_btn);
         window.draw(menu_btn_text);
+
+        pause_reset_btn.setPosition({520, 340});
+        pause_reset_text.setString("RESET");
+        auto rt = pause_reset_text.getLocalBounds();
+        pause_reset_text.setOrigin({rt.position.x + rt.size.x / 2, rt.position.y + rt.size.y / 2});
+        pause_reset_text.setPosition({520, 340});
+        window.draw(pause_reset_btn);
+        window.draw(pause_reset_text);
     }
 
     window.display();

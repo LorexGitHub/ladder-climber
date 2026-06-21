@@ -2,12 +2,20 @@
 #define DK_GAME_H
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <vector>
 #include <memory>
+#include <string>
+#include <cstdio>
 #include "Player.hpp"
 #include "Platform.hpp"
 #include "Barrel.hpp"
 #include "DonkeyKong.hpp"
+
+struct TimeRecord {
+    float stage_times[9] = {-1, -1, -1, -1, -1, -1, -1, -1, -1};
+    float overall_time = -1;
+};
 
 class Game {
 public:
@@ -27,6 +35,10 @@ private:
     int get_stage() const;
     sf::FloatRect get_segment_rect(int pi, int s) const;
     bool is_solid(int pi, int s) const;
+    void load_records();
+    void save_records();
+    void play_random_music();
+    static std::string fmt_time(float t);
 
     sf::RenderWindow window;
     sf::Font font;
@@ -34,6 +46,10 @@ private:
     sf::Text status_text{font};
     sf::Text crowns_text{font};
     sf::Text stage_text{font};
+    sf::Text time_text{font};
+    sf::Text record_text{font};
+    sf::Text overall_rec_text{font};
+    sf::Text stage_rec_text{font};
 
     sf::RectangleShape menu_btn;
     sf::Text menu_btn_text{font};
@@ -69,6 +85,15 @@ private:
     float lava_anim = 0;
     State state = State::Menu;
     bool paused = false;
+
+    float overall_timer = 0;
+    float stage_timer = 0;
+    TimeRecord records;
+
+    sf::Music music;
+    bool muted = false;
+    sf::RectangleShape mute_btn;
+    sf::Text mute_text{font};
 
     static constexpr float BARREL_INTERVAL = 2.0f;
 };

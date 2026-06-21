@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <iostream>
 #include <cmath>
+#include <cstdio>
 
 struct Pos { int x, y; };
 static auto sp(auto& img, Pos p, sf::Color c) { img.setPixel({(unsigned)p.x, (unsigned)p.y}, c); }
@@ -415,6 +416,196 @@ static sf::Image make_ladder_tex() {
     return img;
 }
 
+// Boss sprites: 48x56 each, one distinct monster per stage (1-8)
+static sf::Image make_boss(int stage) {
+    sf::Image img;
+    img.resize({48, 56}, sf::Color::Transparent);
+    auto p = [&](int x, int y, sf::Color c) { sp(img, {x, y}, c); };
+    auto fill = [&](int x1, int y1, int x2, int y2, sf::Color c) {
+        for (int y = y1; y < y2; y++) for (int x = x1; x < x2; x++) p(x, y, c);
+    };
+    auto fill_circ = [&](int cx, int cy, int r, sf::Color c) {
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+                if (dx*dx + dy*dy <= r*r)
+                    p(cx + dx, cy + dy, c);
+    };
+
+    switch (stage) {
+    case 1: {
+        // Horned Fiend (dark red) - round body with horns
+        sf::Color body(139, 0, 0);
+        sf::Color dark(100, 0, 0);
+        fill_circ(24, 30, 16, body);
+        // Horns
+        fill(16, 10, 18, 16, dark); fill(18, 13, 20, 16, dark);
+        fill(30, 10, 32, 16, dark); fill(28, 13, 30, 16, dark);
+        // Angry eyes
+        fill(17, 26, 20, 28, C(255, 200, 0)); fill(17, 27, 19, 28, C(0,0,0));
+        fill(28, 26, 31, 28, C(255, 200, 0)); fill(29, 27, 31, 28, C(0,0,0));
+        // Mouth
+        fill(20, 38, 28, 39, C(60, 0, 0));
+        break;
+    }
+    case 2: {
+        // Spiked Brute (green) - blocky with side spikes
+        sf::Color body(46, 139, 46);
+        sf::Color dark(30, 90, 30);
+        fill(14, 18, 34, 46, body);
+        // Spikes on sides
+        fill(10, 22, 14, 26, dark); fill(10, 30, 14, 34, dark);
+        fill(34, 22, 38, 26, dark); fill(34, 30, 38, 34, dark);
+        // Cyclops eye
+        fill_circ(24, 28, 5, C(255, 255, 200));
+        fill_circ(24, 28, 2, C(200, 0, 0));
+        fill_circ(24, 28, 1, C(0, 0, 0));
+        // Groucho eyebrows
+        fill(18, 22, 30, 24, dark);
+        // Mouth
+        fill(20, 40, 28, 42, dark);
+        break;
+    }
+    case 3: {
+        // Flying Menace (blue) - diamond body with wings
+        sf::Color body(65, 105, 225);
+        sf::Color dark(40, 70, 160);
+        // Diamond body
+        for (int dy = -14; dy <= 14; dy++) {
+            int hw = 14 - std::abs(dy) * 14 / 16;
+            if (hw < 0) hw = 0;
+            fill(24 - hw, 28 + dy, 24 + hw, 28 + dy + 1, body);
+        }
+        // Wings
+        fill(6, 20, 14, 26, dark); fill(34, 20, 42, 26, dark);
+        fill(6, 26, 12, 30, dark); fill(36, 26, 42, 30, dark);
+        // Beady eyes
+        fill(20, 24, 22, 26, C(255, 255, 100)); fill(20, 24, 21, 25, C(0,0,0));
+        fill(26, 24, 28, 26, C(255, 255, 100)); fill(27, 24, 28, 25, C(0,0,0));
+        // Beak
+        fill(22, 30, 26, 32, C(200, 150, 50));
+        break;
+    }
+    case 4: {
+        // Crown Golem (gold) - wide with crown
+        sf::Color body(218, 165, 32);
+        sf::Color dark(160, 120, 20);
+        fill(10, 20, 38, 48, body);
+        // Crown
+        fill(14, 12, 34, 20, C(255, 215, 0));
+        fill(16, 8, 18, 12, C(255, 215, 0));
+        fill(23, 6, 25, 12, C(255, 215, 0));
+        fill(30, 8, 32, 12, C(255, 215, 0));
+        // Jewels
+        fill(15, 14, 17, 16, C(255, 0, 0));
+        fill(22, 13, 26, 15, C(0, 150, 255));
+        fill(31, 14, 33, 16, C(50, 200, 50));
+        // Eyes
+        fill(17, 26, 20, 29, C(0, 0, 0));
+        fill(28, 26, 31, 29, C(0, 0, 0));
+        // Stern mouth
+        fill(20, 40, 28, 42, dark);
+        break;
+    }
+    case 5: {
+        // Shadow Beast (purple) - hunched with claws
+        sf::Color body(139, 0, 139);
+        sf::Color dark(90, 0, 90);
+        fill_circ(24, 32, 16, body);
+        fill_circ(16, 26, 10, body);
+        fill_circ(32, 26, 10, body);
+        // Ears
+        fill(12, 14, 16, 18, dark);
+        fill(32, 14, 36, 18, dark);
+        // Glowing yellow eyes
+        fill(18, 24, 21, 27, C(255, 255, 0));
+        fill(27, 24, 30, 27, C(255, 255, 0));
+        fill(19, 25, 20, 26, C(0, 0, 0));
+        fill(28, 25, 29, 26, C(0, 0, 0));
+        // Claw marks
+        fill(6, 34, 8, 36, C(180, 180, 180));
+        fill(8, 36, 10, 38, C(180, 180, 180));
+        fill(38, 34, 42, 36, C(180, 180, 180));
+        fill(40, 36, 42, 38, C(180, 180, 180));
+        break;
+    }
+    case 6: {
+        // Frost Spirit (cyan) - ghostly wavy shape
+        sf::Color body(0, 206, 209);
+        sf::Color dark(0, 140, 140);
+        // Ghost body
+        for (int dy = 0; dy < 40; dy++) {
+            int hw = 14 - dy * 2 / 5;
+            if (hw < 6) hw = 6;
+            fill(24 - hw, 14 + dy, 24 + hw, 14 + dy + 1, body);
+        }
+        // Wavy bottom
+        fill(14, 50, 20, 54, body); fill(28, 50, 34, 54, body);
+        fill(18, 52, 24, 56, body); fill(24, 52, 30, 56, body);
+        // Hollow eyes
+        fill(18, 24, 22, 28, C(10, 50, 60));
+        fill(26, 24, 30, 28, C(10, 50, 60));
+        // Eye glow
+        fill(19, 25, 21, 27, C(200, 255, 255));
+        fill(27, 25, 29, 27, C(200, 255, 255));
+        // Mouth
+        fill(21, 36, 27, 38, dark);
+        break;
+    }
+    case 7: {
+        // Fire Lord (orange) - flame shaped
+        sf::Color body(255, 69, 0);
+        sf::Color dark(200, 50, 0);
+        // Flame body - jagged shape
+        for (int dy = 0; dy < 42; dy++) {
+            int wave = int(3 * std::sin(dy * 0.5f));
+            int hw = 14 - dy * 3 / 10 + wave;
+            if (hw < 4) hw = 4;
+            fill(24 - hw, 12 + dy, 24 + hw, 12 + dy + 1, body);
+        }
+        // Jagged top
+        fill(20, 6, 22, 14, dark); fill(26, 6, 28, 14, dark);
+        fill(22, 4, 26, 8, C(255, 200, 0));
+        // Bright eyes
+        fill(19, 22, 22, 25, C(255, 255, 200));
+        fill(26, 22, 29, 25, C(255, 255, 200));
+        fill(20, 23, 21, 24, C(0, 0, 0));
+        fill(27, 23, 28, 24, C(0, 0, 0));
+        // Mouth
+        fill(21, 36, 27, 37, dark);
+        break;
+    }
+    case 8: {
+        // Dark Overlord (dark maroon) - imposing skull-like
+        sf::Color body(74, 4, 4);
+        sf::Color dark(40, 2, 2);
+        // Broad shoulders
+        fill(6, 28, 42, 50, body);
+        // Neck
+        fill(18, 16, 30, 28, body);
+        // Skull head
+        fill_circ(24, 14, 12, C(100, 100, 100));
+        // Horns
+        fill(14, 2, 16, 12, dark); fill(12, 4, 14, 10, dark);
+        fill(32, 2, 34, 12, dark); fill(34, 4, 36, 10, dark);
+        // Skull eyes
+        fill_circ(19, 13, 4, C(0, 0, 0));
+        fill_circ(29, 13, 4, C(0, 0, 0));
+        fill(18, 12, 20, 14, C(255, 0, 0));
+        fill(28, 12, 30, 14, C(255, 0, 0));
+        // Skull mouth
+        fill(19, 20, 29, 22, C(0, 0, 0));
+        fill(21, 22, 27, 23, C(0, 0, 0));
+        fill(22, 19, 26, 20, C(80, 80, 80));
+        // Armor trim
+        fill(6, 44, 14, 46, C(120, 120, 120));
+        fill(34, 44, 42, 46, C(120, 120, 120));
+        break;
+    }
+    default: break;
+    }
+    return img;
+}
+
 int main() {
     std::filesystem::create_directories("assets/sprites");
     auto save = [](const sf::Image& img, const char* name) {
@@ -431,5 +622,10 @@ int main() {
     save(make_platform_tex(), "platform");
     save(make_ladder_tex(), "ladder");
     save(make_lava(), "lava");
+    for (int i = 1; i <= 8; i++) {
+        char name[16];
+        std::snprintf(name, sizeof(name), "boss_%d", i);
+        save(make_boss(i), name);
+    }
     return 0;
 }

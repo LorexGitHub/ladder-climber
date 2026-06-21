@@ -20,7 +20,7 @@ add_executable(DonkeyKong
 )
 
 target_compile_features(DonkeyKong PRIVATE cxx_std_20)
-target_link_libraries(DonkeyKong PRIVATE SFML::Graphics)
+target_link_libraries(DonkeyKong PRIVATE SFML::Graphics SFML::Audio)
 
 # Sprite generator tool (builds once to create pixel-art PNGs)
 add_executable(gen_sprites tools/gen_sprites.cpp)

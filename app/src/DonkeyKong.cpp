@@ -1,25 +1,27 @@
 #include "DonkeyKong.hpp"
+#include <cstdio>
 
 DonkeyKong::DonkeyKong(float x, float y, int stage) : monster_stage(stage) {
     shape.setFillColor(sf::Color{80, 60, 30});
     shape.setOrigin({24, 56});
     shape.setPosition({x, y});
-    [[maybe_unused]] bool loaded = texture.loadFromFile("assets/sprites/donkey_kong.png");
+    load_texture();
+}
+
+void DonkeyKong::load_texture() {
+    char path[64];
+    if (monster_stage < 9)
+        std::snprintf(path, sizeof(path), "assets/sprites/boss_%d.png", monster_stage);
+    else
+        std::snprintf(path, sizeof(path), "assets/sprites/donkey_kong.png");
+    texture_loaded = texture.loadFromFile(path);
 }
 
 void DonkeyKong::draw(sf::RenderWindow& win) const {
-    if (texture.getSize().x > 0) {
+    if (texture_loaded) {
         sf::Sprite spr(texture);
         spr.setOrigin({24, 56});
         spr.setPosition(shape.getPosition());
-        if (monster_stage < 9) {
-            sf::Color tints[] = {
-                {220, 120, 120}, {120, 220, 120}, {120, 120, 220},
-                {220, 220, 100}, {200, 120, 220}, {100, 220, 220},
-                {220, 180, 100}, {180, 120, 220}
-            };
-            spr.setColor(tints[(monster_stage - 1) % 8]);
-        }
         win.draw(spr);
     } else {
         win.draw(shape);

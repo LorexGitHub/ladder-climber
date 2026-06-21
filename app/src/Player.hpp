@@ -44,6 +44,7 @@ private:
     static constexpr float SPEED = 200.f;
     static constexpr float JUMP_VEL = -330.f;
     static constexpr float GRAVITY = 900.f;
+    static constexpr float AIR_ACCEL = 15.f;
 };
 
 #endif
