@@ -2,6 +2,7 @@
 #include <SFML/Window/Keyboard.hpp>
 #include <SFML/Window/Mouse.hpp>
 #include <fstream>
+#include <cmath>
 
 Game::Game()
     : window(sf::VideoMode({800u, 750u}), "Donkey Kong") {
@@ -71,6 +72,7 @@ Game::Game()
     [[maybe_unused]] bool bg_ok = bg_tex.loadFromFile("assets/sprites/background.png");
     [[maybe_unused]] bool pt_ok = plat_tex.loadFromFile("assets/sprites/platform.png");
     [[maybe_unused]] bool lt_ok = ladder_tex.loadFromFile("assets/sprites/ladder.png");
+    [[maybe_unused]] bool lv_ok = lava_tex.loadFromFile("assets/sprites/lava.png");
     bg_shape.setFillColor(sf::Color{20, 20, 40});
 
     // ---- Platforms (100px gaps, 6 levels) ----
@@ -98,6 +100,7 @@ void Game::start_game() {
     barrels.clear();
     barrel_timer = 0;
     player.set_position(100.f, 710.f);
+    player.set_dead(false);
     dk = DonkeyKong(60.f, 140.f);
     player.set_climbing(false);
     // Start with barrels on P0-P4 (P5 is player spawn)
@@ -196,6 +199,10 @@ void Game::handle_input(float dt) {
 }
 
 void Game::update(float dt) {
+    // Lava animation
+    lava_anim += dt * 30.f;
+    if (lava_anim > 800) lava_anim = 0;
+
     // ----- Player -----
     player.update(dt);
 
@@ -294,8 +301,14 @@ void Game::update(float dt) {
     // ----- Collisions -----
     check_collisions();
 
-    // ----- Win? (player reached top-left where princess is) -----
-    if (player.get_pos().y < 155 && player.get_pos().x < 200 && state == State::Playing) {
+    // Lava kills
+    if (player.get_pos().y > 710 && state == State::Playing) {
+        state = State::GameOver;
+        player.set_dead(true);
+    }
+
+    // ----- Win? (player must reach princess at top-left) -----
+    if (player.get_pos().y < 140 && player.get_pos().x < 100 && state == State::Playing) {
         state = State::Won;
         crowns++;
         save_crowns();
@@ -311,6 +324,7 @@ void Game::check_collisions() {
     for (auto& b : barrels) {
         if (player.get_bounds().findIntersection(b->get_bounds()).has_value()) {
             state = State::GameOver;
+            player.set_dead(true);
             return;
         }
     }
@@ -356,6 +370,24 @@ void Game::draw() {
         window.draw(bg_spr);
     } else {
         window.draw(bg_shape);
+    }
+
+    // Lava at bottom
+    if (lava_tex.getSize().x > 0) {
+        sf::Sprite lava_spr(lava_tex);
+        lava_spr.setPosition({0.f, 710.f});
+        window.draw(lava_spr);
+        // Animated glow
+        sf::RectangleShape glow({800, 40});
+        glow.setPosition({0, 710});
+        int a = 20 + int(15 * std::sin(lava_anim * 0.1));
+        glow.setFillColor(sf::Color(std::uint8_t(255), std::uint8_t(200), std::uint8_t(50), std::uint8_t(a)));
+        window.draw(glow);
+    } else {
+        sf::RectangleShape lava_fill({800, 40});
+        lava_fill.setPosition({0, 710});
+        lava_fill.setFillColor(sf::Color{200, 50, 10});
+        window.draw(lava_fill);
     }
 
     // Platforms

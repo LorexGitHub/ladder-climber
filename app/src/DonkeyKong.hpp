@@ -13,7 +13,7 @@ public:
     const sf::RectangleShape& get_shape() const { return shape; }
 
 private:
-    sf::RectangleShape shape{sf::Vector2f{72, 84}};
+    sf::RectangleShape shape{sf::Vector2f{48, 56}};
     sf::Texture texture;
 };
 

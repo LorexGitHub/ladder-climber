@@ -32,6 +32,8 @@ void Player::stop_on_ladder() {
 }
 
 void Player::update(float dt) {
+    if (dead) return;
+
     if (climbing) {
         pos.y += vel.y * dt;
         shape.setPosition(pos);
@@ -75,7 +77,6 @@ void Player::set_position(float x, float y) {
     vel = {0, 0};
     on_ground = true;
     shape.setPosition(pos);
-    anim_frame = 0;
 }
 
 sf::FloatRect Player::get_bounds() const {
@@ -87,7 +88,10 @@ void Player::draw(sf::RenderWindow& w) const {
         sf::Sprite spr(texture);
         spr.setOrigin({12, 32});
         spr.setPosition(pos);
-        spr.setTextureRect({{anim_frame * 24, 0}, {24, 32}});
+        int frame = dead ? 2 : anim_frame;
+        spr.setTextureRect({{frame * 24, 0}, {24, 32}});
+        if (dir < 0 && !dead)
+            spr.setScale({-1.f, 1.f});
         w.draw(spr);
     } else {
         w.draw(shape);

@@ -7,135 +7,147 @@ struct Pos { int x, y; };
 static auto sp(auto& img, Pos p, sf::Color c) { img.setPixel({(unsigned)p.x, (unsigned)p.y}, c); }
 static auto C(int r, int g, int b) { return sf::Color(r, g, b); }
 
-// Player: sprite sheet 48x32 (two 24x32 frames: standing, walking)
+// Player: sprite sheet 72x32 (three 24x32 frames: stand, walk, death)
 static sf::Image make_player() {
     sf::Image img;
-    img.resize({48, 32}, sf::Color::Transparent);
+    img.resize({72, 32}, sf::Color::Transparent);
     auto p = [&](int x, int y, sf::Color c) { sp(img, {x, y}, c); };
-    for (int frame = 0; frame < 2; frame++) {
-        int ox = frame * 24;
-        // Head (skin color)
-        for (int y = 2; y < 10; y++)
-            for (int x = 6; x < 18; x++)
-                p(ox + x, y, C(245, 210, 180));
-        // Red cap
-        for (int y = 0; y < 3; y++)
-            for (int x = 5; x < 19; x++)
-                p(ox + x, y, C(200, 40, 40));
-        for (int x = 7; x < 17; x++) p(ox + x, 3, C(200, 40, 40));
-        // Cap brim
-        for (int x = 3; x < 21; x++) p(ox + x, 4, C(180, 30, 30));
-        // Eyes
-        p(ox + 9, 5, C(0,0,0)); p(ox + 14, 5, C(0,0,0));
-        p(ox + 8, 5, C(255,255,255)); p(ox + 13, 5, C(255,255,255));
-        // Body (blue overalls)
-        for (int y = 11; y < 22; y++)
-            for (int x = 5; x < 19; x++)
-                p(ox + x, y, C(40, 80, 200));
-        // Arms (skin)
-        for (int y = 11; y < 18; y++) {
-            p(ox + 2, y, C(245,210,180)); p(ox + 3, y, C(245,210,180));
-            p(ox + 20, y, C(245,210,180)); p(ox + 21, y, C(245,210,180));
+    auto fill = [&](int x1, int y1, int x2, int y2, sf::Color c) {
+        for (int y = y1; y < y2; y++) for (int x = x1; x < x2; x++) p(x, y, c);
+    };
+    for (int f = 0; f < 3; f++) {
+        int ox = f * 24;
+        bool death = (f == 2);
+        // Red cap (slightly tilted in death)
+        int ct = death ? 1 : 0;
+        fill(ox + 5 + ct, 0, ox + 19 + ct, 3, C(220, 40, 40));
+        fill(ox + 7 + ct, 3, ox + 17 + ct, 4, C(220, 40, 40));
+        fill(ox + 3 + ct, 4, ox + 21 + ct, 5, death ? C(130, 20, 20) : C(190, 30, 30));
+        // Face
+        fill(ox + 6, 5, ox + 18, 10, death ? C(200, 180, 160) : C(250, 215, 185));
+        // Eyes (X eyes for death, normal otherwise)
+        if (death) {
+            p(ox + 8, 6, C(255,50,50)); p(ox + 10, 6, C(255,50,50));
+            p(ox + 9, 5, C(255,50,50)); p(ox + 9, 7, C(255,50,50));
+            p(ox + 13, 6, C(255,50,50)); p(ox + 15, 6, C(255,50,50));
+            p(ox + 14, 5, C(255,50,50)); p(ox + 14, 7, C(255,50,50));
+            // Open mouth
+            fill(ox + 10, 8, ox + 14, 10, C(100, 40, 40));
+        } else {
+            p(ox + 9, 6, C(0,0,0)); p(ox + 14, 6, C(0,0,0));
+            p(ox + 8, 6, C(255,255,255)); p(ox + 13, 6, C(255,255,255));
+            fill(ox + 10, 8, ox + 14, 9, C(180, 100, 80));
         }
-        // Overall straps
-        for (int x = 8; x < 11; x++) for (int y = 10; y < 13; y++) p(ox + x, y, C(30, 60, 180));
-        for (int x = 13; x < 16; x++) for (int y = 10; y < 13; y++) p(ox + x, y, C(30, 60, 180));
-        // Overall buttons
-        p(ox + 9, 12, C(255,215,0)); p(ox + 14, 12, C(255,215,0));
-        // Legs (different per frame for walk animation)
-        int l1 = 4, r1 = 10, l2 = 14, r2 = 20; // default leg positions
-        if (frame == 1) { l1 = 6; r1 = 12; l2 = 12; r2 = 18; } // walk spread
-        for (int y = 22; y < 30; y++) {
-            for (int x = l1; x < r1; x++) p(ox + x, y, C(30, 60, 180));
-            for (int x = l2; x < r2; x++) p(ox + x, y, C(30, 60, 180));
+        // Body (red shirt)
+        fill(ox + 5, 10, ox + 19, 18, death ? C(160, 30, 30) : C(200, 40, 40));
+        // Blue overalls
+        fill(ox + 5, 16, ox + 19, 22, death ? C(35, 60, 160) : C(50, 90, 210));
+        // Straps
+        fill(ox + 7, 13, ox + 10, 16, death ? C(35, 60, 160) : C(50, 90, 210));
+        fill(ox + 14, 13, ox + 17, 16, death ? C(35, 60, 160) : C(50, 90, 210));
+        // Belt
+        fill(ox + 6, 20, ox + 18, 21, death ? C(140, 120, 40) : C(180, 160, 60));
+        // Arms (death: arms raised up)
+        if (death) {
+            fill(ox + 2, 8, ox + 5, 13, C(200, 180, 160));
+            fill(ox + 19, 8, ox + 22, 13, C(200, 180, 160));
+            fill(ox + 1, 12, ox + 3, 14, C(200, 180, 160));
+            fill(ox + 21, 12, ox + 23, 14, C(200, 180, 160));
+        } else {
+            fill(ox + 2 - (f==1?1:0), 11, ox + 5 - (f==1?1:0), 17, C(250, 215, 185));
+            fill(ox + 19 + (f==1?1:0), 11, ox + 22 + (f==1?1:0), 17, C(250, 215, 185));
+            fill(ox + 1 - (f==1?1:0), 15, ox + 3 - (f==1?1:0), 17, C(250, 215, 185));
+            fill(ox + 20 + (f==1?1:0), 15, ox + 22 + (f==1?1:0), 17, C(250, 215, 185));
         }
-        // Shoes (brown)
-        for (int y = 28; y < 32; y++) {
-            for (int x = l1 - 1; x < r1 + 1; x++) p(ox + x, y, C(100, 60, 30));
-            for (int x = l2 - 1; x < r2 + 1; x++) p(ox + x, y, C(100, 60, 30));
-        }
+        // Legs (death: legs slightly apart)
+        int s = death ? 2 : ((f == 1) ? 4 : 0);
+        fill(ox + 6 - s, 22, ox + 12 - s, 29, death ? C(30, 50, 130) : C(40, 70, 180));
+        fill(ox + 12 + s, 22, ox + 18 + s, 29, death ? C(30, 50, 130) : C(40, 70, 180));
+        // Shoes
+        fill(ox + 5 - s, 28, ox + 13 - s, 32, death ? C(70, 40, 15) : C(90, 55, 25));
+        fill(ox + 11 + s, 28, ox + 19 + s, 32, death ? C(70, 40, 15) : C(90, 55, 25));
     }
     return img;
 }
 
-// Barrel: 24x24 with rotation marker visible
+// Barrel: 24x24 red barrel with metal bands
 static sf::Image make_barrel() {
     sf::Image img;
     img.resize({24, 24}, sf::Color::Transparent);
     auto p = [&](int x, int y, sf::Color c) { sp(img, {x, y}, c); };
-    for (int y = 0; y < 24; y++)
-        for (int x = 0; x < 24; x++) {
-            float dx = x - 12, dy = y - 12;
-            if (dx * dx + dy * dy <= 144)
-                p(x, y, C(220, 60, 60));
-        }
-    // Bands
-    for (int x = 0; x < 24; x++) {
-        for (int y = 6; y < 10; y++) p(x, y, C(160, 40, 40));
-        for (int y = 14; y < 18; y++) p(x, y, C(160, 40, 40));
+    auto fill = [&](int x1, int y1, int x2, int y2, sf::Color c) {
+        for (int y = y1; y < y2; y++) for (int x = x1; x < x2; x++) if ((x-12)*(x-12)+(y-12)*(y-12) <= 144) p(x, y, c);
+    };
+    // Red base
+    for (int y = 0; y < 24; y++) for (int x = 0; x < 24; x++) {
+        float dx = x - 12, dy = y - 12;
+        if (dx * dx + dy * dy <= 144)
+            p(x, y, C(210, 50, 50));
     }
-    // Arrow marker to show rotation
-    for (int x = 10; x < 14; x++) p(x, 2, C(255, 200, 50));
-    p(11, 1, C(255, 200, 50)); p(12, 1, C(255, 200, 50));
+    // Darker bands
+    fill(0, 5, 24, 8, C(160, 150, 130));
+    fill(0, 16, 24, 19, C(160, 150, 130));
+    // Band rivets
+    for (int x = 5; x < 20; x += 7) { p(x, 6, C(200, 190, 170)); p(x+1, 6, C(200,190,170)); p(x, 7, C(200,190,170)); p(x+1,7,C(200,190,170)); }
+    for (int x = 5; x < 20; x += 7) { p(x, 17, C(200,190,170)); p(x+1, 17, C(200,190,170)); p(x, 18, C(200,190,170)); p(x+1,18,C(200,190,170)); }
+    // Arrow marker for rotation
+    fill(10, 1, 14, 4, C(255, 200, 50));
+    p(11, 0, C(255,200,50)); p(12, 0, C(255,200,50));
     // Highlight
-    for (int y = 3; y < 7; y++)
-        for (int x = 4; x < 10; x++)
-            p(x, y, C(240, 100, 100));
+    fill(4, 2, 9, 6, C(240, 100, 100));
     return img;
 }
 
-// DK: 72x84 (bigger, more detailed)
+// DK: 48x56 (smaller hitbox)
 static sf::Image make_donkey_kong() {
     sf::Image img;
-    img.resize({72, 84}, sf::Color::Transparent);
+    img.resize({48, 56}, sf::Color::Transparent);
     auto p = [&](int x, int y, sf::Color c) { sp(img, {x, y}, c); };
-
     auto fill = [&](int x1, int y1, int x2, int y2, sf::Color c) {
         for (int y = y1; y < y2; y++) for (int x = x1; x < x2; x++) p(x, y, c);
     };
-
     // Body (brown)
-    fill(14, 24, 58, 66, C(120, 80, 40));
+    fill(10, 16, 38, 44, C(120, 80, 40));
     // Belly (lighter)
-    fill(24, 30, 48, 57, C(160, 120, 60));
+    fill(16, 20, 32, 38, C(160, 120, 60));
     // Head
-    fill(18, 4, 54, 27, C(130, 90, 50));
+    fill(12, 2, 36, 18, C(130, 90, 50));
     // Ears
-    fill(8, 6, 18, 15, C(100, 60, 30));
-    fill(54, 6, 64, 15, C(100, 60, 30));
+    fill(5, 4, 12, 10, C(100, 60, 30));
+    fill(36, 4, 43, 10, C(100, 60, 30));
     // Inner ears
-    fill(10, 8, 16, 13, C(160, 100, 60));
-    fill(56, 8, 62, 13, C(160, 100, 60));
+    fill(7, 5, 11, 9, C(160, 100, 60));
+    fill(37, 5, 41, 9, C(160, 100, 60));
     // Eyes (white)
-    fill(24, 15, 30, 19, C(255, 255, 255));
-    fill(42, 15, 48, 19, C(255, 255, 255));
+    fill(16, 10, 21, 13, C(255, 255, 255));
+    fill(27, 10, 32, 13, C(255, 255, 255));
     // Pupils
-    fill(26, 16, 28, 18, C(0, 0, 0));
-    fill(44, 16, 46, 18, C(0, 0, 0));
+    fill(18, 11, 20, 13, C(0, 0, 0));
+    fill(28, 11, 30, 13, C(0, 0, 0));
     // Eyebrows
-    fill(22, 12, 32, 14, C(80, 40, 20));
-    fill(40, 12, 50, 14, C(80, 40, 20));
+    fill(15, 8, 22, 10, C(80, 40, 20));
+    fill(26, 8, 33, 10, C(80, 40, 20));
     // Nose
-    fill(33, 20, 39, 24, C(80, 40, 20));
+    fill(22, 14, 26, 16, C(80, 40, 20));
     // Mouth
-    fill(27, 25, 45, 27, C(80, 40, 20));
+    fill(18, 17, 30, 18, C(80, 40, 20));
     // Red tie
-    fill(33, 27, 39, 36, C(200, 50, 50));
-    fill(35, 36, 37, 40, C(200, 50, 50));
+    fill(22, 18, 26, 24, C(200, 50, 50));
+    fill(23, 24, 25, 27, C(200, 50, 50));
     // Arms
-    fill(6, 27, 14, 45, C(110, 70, 35));
-    fill(58, 27, 66, 45, C(110, 70, 35));
+    fill(4, 18, 10, 30, C(110, 70, 35));
+    fill(38, 18, 44, 30, C(110, 70, 35));
     // Hands
-    fill(4, 39, 14, 45, C(80, 50, 25));
-    fill(58, 39, 68, 45, C(80, 50, 25));
+    fill(3, 26, 10, 30, C(80, 50, 25));
+    fill(38, 26, 45, 30, C(80, 50, 25));
     // Legs
-    fill(18, 63, 30, 84, C(100, 60, 30));
-    fill(42, 63, 54, 84, C(100, 60, 30));
+    fill(12, 42, 20, 56, C(100, 60, 30));
+    fill(28, 42, 36, 56, C(100, 60, 30));
     // Feet
-    fill(12, 76, 32, 84, C(80, 40, 20));
-    fill(40, 76, 60, 84, C(80, 40, 20));
+    fill(8, 51, 22, 56, C(80, 40, 20));
+    fill(26, 51, 40, 56, C(80, 40, 20));
     // Belly button
-    fill(35, 42, 37, 44, C(120, 80, 40));
+    fill(23, 28, 25, 30, C(120, 80, 40));
     return img;
 }
 
@@ -199,36 +211,76 @@ static sf::Image make_crown() {
     return img;
 }
 
-// Background: 800x750 gradient sky
+// Background: 800x750 dark with support structures
 static sf::Image make_background() {
     sf::Image img;
     img.resize({800, 750}, sf::Color::Transparent);
-    // Sky gradient: dark blue (top) to lighter blue (bottom)
-    for (int y = 0; y < 600; y++) {
-        int b = 40 + y / 6;
-        int g = 10 + y / 15;
-        int r = 5 + y / 20;
-        sf::Color c(r > 255 ? 255 : r, g > 120 ? 120 : g, b > 200 ? 200 : b);
+    auto p = [&](int x, int y, sf::Color c) { sp(img, {x, y}, c); };
+    auto fill = [&](int x1, int y1, int x2, int y2, sf::Color c) {
+        for (int y = y1; y < y2; y++) for (int x = x1; x < x2; x++) p(x, y, c);
+    };
+    // Dark gradient background
+    for (int y = 0; y < 750; y++) {
+        int b = 8 + y / 50;
+        if (b > 25) b = 25;
+        sf::Color c(3, 3, b);
         for (int x = 0; x < 800; x++) img.setPixel({(unsigned)x, (unsigned)y}, c);
     }
-    // Ground
-    for (int y = 600; y < 750; y++) {
-        sf::Color gnd(30, 60 + (y - 600) / 3, 15);
-        for (int x = 0; x < 800; x++) img.setPixel({(unsigned)x, (unsigned)y}, gnd);
-    }
-    // Stars at top
+    // Sparse dim stars
     auto star = [&](int sx, int sy) {
         for (int dy = -1; dy <= 1; dy++)
             for (int dx = -1; dx <= 1; dx++)
                 if (std::abs(dx) + std::abs(dy) <= 1)
-                    img.setPixel({(unsigned)(sx + dx), (unsigned)(sy + dy)}, sf::Color(255, 255, 200));
+                    img.setPixel({(unsigned)(sx + dx), (unsigned)(sy + dy)}, sf::Color(160, 170, 200, 100));
     };
-    star(100, 30); star(250, 80); star(400, 20); star(550, 55);
-    star(700, 40); star(150, 110); star(620, 90); star(350, 120);
-    // Tall grass on ground
-    for (int x = 0; x < 800; x += 8) {
-        for (int dy = 0; dy < 4; dy++)
-            img.setPixel({(unsigned)(x + 2), (unsigned)(595 + dy)}, sf::Color(25, 120, 10));
+    star(120, 40); star(340, 70); star(560, 25); star(720, 55);
+    star(200, 100); star(480, 45); star(650, 85); star(80, 90);
+
+    // Support structures: left & right steel columns connecting platforms
+    sf::Color steel(50, 55, 65);
+    sf::Color steel_hl(70, 75, 85);
+    // Left column (x=44..56)
+    fill(44, 140, 56, 710, steel);
+    fill(44, 140, 47, 710, steel_hl);
+    // Right column (x=744..756)
+    fill(744, 140, 756, 710, steel);
+    fill(753, 140, 756, 710, steel_hl);
+    // Horizontal beams at each platform level
+    float levels[] = {140.f, 254.f, 368.f, 482.f, 596.f, 710.f};
+    for (float ly : levels) {
+        int y = int(ly);
+        // Beam across bottom of each platform
+        fill(44, y + 10, 56, y + 16, C(70, 75, 85));
+        fill(744, y + 10, 756, y + 16, C(70, 75, 85));
+        // Cross beam connectors
+        fill(50, y + 10, 56, y + 14, C(90, 95, 105));
+        fill(744, y + 10, 750, y + 14, C(90, 95, 105));
+    }
+    // Diagonal cross braces between levels
+    auto cross = [&](int x1, int y1, int x2, int y2, sf::Color c) {
+        int dx = x2 - x1, dy = y2 - y1;
+        int steps = std::max(std::abs(dx), std::abs(dy));
+        for (int i = 0; i <= steps; i++) {
+            int x = x1 + dx * i / steps;
+            int y = y1 + dy * i / steps;
+            if (x >= 0 && x < 800 && y >= 0 && y < 750)
+                img.setPixel({(unsigned)x, (unsigned)y}, c);
+        }
+    };
+    sf::Color brace(45, 50, 60);
+    // Left side X-brace between each pair of levels
+    for (int i = 0; i < 5; i++) {
+        int y_top = int(levels[i]) + 14;
+        int y_bot = int(levels[i+1]);
+        cross(48, y_top, 52, y_bot, brace);
+        cross(52, y_top, 48, y_bot, brace);
+    }
+    // Right side X-brace
+    for (int i = 0; i < 5; i++) {
+        int y_top = int(levels[i]) + 14;
+        int y_bot = int(levels[i+1]);
+        cross(748, y_top, 752, y_bot, brace);
+        cross(752, y_top, 748, y_bot, brace);
     }
     return img;
 }
@@ -258,6 +310,34 @@ static sf::Image make_platform_tex() {
         img.setPixel({(unsigned)x + 1, 11}, sf::Color(180, 160, 100));
         img.setPixel({(unsigned)x, 12}, sf::Color(180, 160, 100));
         img.setPixel({(unsigned)x + 1, 12}, sf::Color(180, 160, 100));
+    }
+    return img;
+}
+
+// Lava: 800x40 animated lava strip
+static sf::Image make_lava() {
+    sf::Image img;
+    img.resize({800, 40}, sf::Color::Transparent);
+    auto p = [&](int x, int y, sf::Color c) { sp(img, {x, y}, c); };
+    for (int y = 0; y < 40; y++) {
+        for (int x = 0; x < 800; x++) {
+            float ny = y / 40.f;
+            // Glow effect: hot center
+            int r = 180 + int(75 * (1 - ny));
+            int g = 40 + int(80 * (1 - ny)) - x % 3;
+            int b = 5;
+            if (r > 255) r = 255;
+            if (g > 255) g = 255;
+            // Ripple pattern
+            int wave = int(4 * (1 - ny) * std::sin(x * 0.08 + y * 0.3));
+            if (y > 30 - wave) { r = 255; g = 140; b = 20; }
+            p(x, 39 - y, C(r, g, b));
+        }
+    }
+    // Bright surface line
+    for (int x = 0; x < 800; x++) {
+        p(x, 0, C(255, 200, 50));
+        p(x, 1, C(255, 180, 60));
     }
     return img;
 }
@@ -304,5 +384,6 @@ int main() {
     save(make_background(), "background");
     save(make_platform_tex(), "platform");
     save(make_ladder_tex(), "ladder");
+    save(make_lava(), "lava");
     return 0;
 }

@@ -17,6 +17,7 @@ public:
 
     void set_position(float x, float y);
     void set_on_ground(bool g) { on_ground = g; }
+    void set_dead(bool d) { dead = d; }
     void draw(sf::RenderWindow& w) const;
 
     sf::FloatRect get_bounds() const;
@@ -24,6 +25,7 @@ public:
     bool is_on_ground() const { return on_ground; }
     bool is_climbing() const { return climbing; }
     void set_climbing(bool c) { climbing = c; }
+    bool is_dead() const { return dead; }
 
     const sf::RectangleShape& get_shape() const { return shape; }
 
@@ -36,6 +38,7 @@ private:
     int anim_frame = 0;
     bool on_ground = false;
     bool climbing = false;
+    bool dead = false;
     int dir = 0; // -1 left, 0 none, 1 right
 
     static constexpr float SPEED = 200.f;

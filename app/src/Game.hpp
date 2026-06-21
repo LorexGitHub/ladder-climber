@@ -51,6 +51,7 @@ private:
     sf::Texture bg_tex;
     sf::Texture plat_tex;
     sf::Texture ladder_tex;
+    sf::Texture lava_tex;
     sf::RectangleShape bg_shape{{800, 750}};
 
     std::vector<Platform> platforms;
@@ -59,6 +60,7 @@ private:
 
     float barrel_timer = 0;
     float pause_cd = 0;
+    float lava_anim = 0;
     State state = State::Menu;
     bool paused = false;
 
