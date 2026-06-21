@@ -150,8 +150,8 @@ Game::Game()
         t.setOrigin({lb.position.x + lb.size.x / 2, lb.position.y + lb.size.y / 2});
         t.setPosition({x, y});
     };
-    setup_btn(pause_resume_btn, pause_resume_text, 280, 280, "RESUME");
-    setup_btn(pause_reset_btn, pause_reset_text, 520, 280, "RESET");
+    setup_btn(pause_resume_btn, pause_resume_text, 300, 280, "RESUME");
+    setup_btn(pause_reset_btn, pause_reset_text, 500, 280, "RESET");
 
     princess.setSize({20, 36});
     princess.setFillColor(sf::Color::Magenta);
@@ -260,8 +260,6 @@ void Game::handle_input(float dt) {
 
             if (state == State::Menu || state == State::GameOver || state == State::Won) {
                 if (state == State::Won && pause_reset_btn.getGlobalBounds().contains(wp)) {
-                    overall_timer = 0;
-                    play_random_music();
                     start_game();
                 } else if (menu_btn.getGlobalBounds().contains(wp)) {
                     if (state == State::GameOver || (state == State::Won && crowns >= 9)) {
@@ -508,6 +506,9 @@ void Game::draw() {
     window.clear(sf::Color{20, 20, 40});
 
     if (state == State::Menu) {
+        sf::RectangleShape overlay({800, 750});
+        overlay.setFillColor(sf::Color{0, 0, 0, 180});
+        window.draw(overlay);
         window.draw(title_text);
         window.draw(menu_btn);
         window.draw(menu_btn_text);
@@ -711,6 +712,9 @@ void Game::draw() {
     }
 
     if (state == State::GameOver) {
+        sf::RectangleShape overlay({800, 750});
+        overlay.setFillColor(sf::Color{0, 0, 0, 150});
+        window.draw(overlay);
         status_text.setString("GAME OVER");
         status_text.setPosition({280, 200});
         window.draw(status_text);
@@ -724,6 +728,9 @@ void Game::draw() {
     }
 
     if (state == State::Won) {
+        sf::RectangleShape overlay({800, 750});
+        overlay.setFillColor(sf::Color{0, 0, 0, 150});
+        window.draw(overlay);
         int si = stage - 1;
         float prev_stage = records.stage_times[si];
         bool new_stage_rec = (stage_timer < prev_stage || prev_stage < 0);
@@ -807,24 +814,27 @@ void Game::draw() {
         window.draw(stage_text);
 
         // Buttons
-        menu_btn.setPosition({280, 340});
-        if (crowns >= 9)
-            menu_btn_text.setString("PLAY AGAIN");
-        else
-            menu_btn_text.setString("NEXT STAGE");
-        auto mt = menu_btn_text.getLocalBounds();
-        menu_btn_text.setOrigin({mt.position.x + mt.size.x / 2, mt.position.y + mt.size.y / 2});
-        menu_btn_text.setPosition({280, 340});
-        window.draw(menu_btn);
-        window.draw(menu_btn_text);
-
-        pause_reset_btn.setPosition({520, 340});
-        pause_reset_text.setString("RESET");
-        auto rt = pause_reset_text.getLocalBounds();
-        pause_reset_text.setOrigin({rt.position.x + rt.size.x / 2, rt.position.y + rt.size.y / 2});
-        pause_reset_text.setPosition({520, 340});
-        window.draw(pause_reset_btn);
-        window.draw(pause_reset_text);
+        float bx[] = {300, 500};
+        const char* labels[] = {
+            crowns >= 9 ? "PLAY AGAIN" : "NEXT STAGE",
+            "RESET"
+        };
+        sf::RectangleShape* btns[] = {&menu_btn, &pause_reset_btn};
+        sf::Text* btn_texts[] = {&menu_btn_text, &pause_reset_text};
+        for (int bi = 0; bi < 2; bi++) {
+            btns[bi]->setSize({160, 50});
+            btns[bi]->setOrigin({80, 25});
+            btns[bi]->setPosition({bx[bi], 340});
+            btns[bi]->setFillColor(sf::Color{60, 60, 180});
+            window.draw(*btns[bi]);
+            btn_texts[bi]->setString(labels[bi]);
+            btn_texts[bi]->setCharacterSize(24);
+            btn_texts[bi]->setFillColor(sf::Color::White);
+            auto tb = btn_texts[bi]->getLocalBounds();
+            btn_texts[bi]->setOrigin({tb.position.x + tb.size.x / 2, tb.position.y + tb.size.y / 2});
+            btn_texts[bi]->setPosition({bx[bi], 340});
+            window.draw(*btn_texts[bi]);
+        }
     }
 
     window.display();
