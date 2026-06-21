@@ -136,7 +136,7 @@ void Game::start_game() {
     barrel_timer = 0;
     player.set_position(100.f, 710.f);
     player.set_dead(false);
-    dk = DonkeyKong(60.f, 140.f);
+    dk = DonkeyKong(60.f, 140.f, stage);
     player.set_climbing(false);
 
     for (int lvl = 0; lvl < (int)platforms.size() - 1; lvl++) {
@@ -432,6 +432,44 @@ void Game::draw() {
         window.draw(bg_shape);
     }
 
+    // Stage color tint overlay (background only)
+    {
+        sf::Color stage_tints[] = {
+            {60, 20, 30, 35},   {20, 50, 40, 35},   {30, 20, 60, 35},
+            {60, 50, 10, 35},   {50, 20, 60, 35},   {10, 50, 60, 35},
+            {60, 40, 10, 35},   {40, 20, 55, 35}
+        };
+        sf::RectangleShape tint_overlay({800, 750});
+        tint_overlay.setFillColor(stage_tints[(stage - 1) % 8]);
+        window.draw(tint_overlay);
+    }
+
+    // Animated torches on towers and platforms
+    {
+        int flicker = int(lava_anim) % 6;
+        float fh = 10.f + flicker * 1.5f;
+        auto draw_torch = [&](float tx, float ty) {
+            sf::RectangleShape post({3, 14});
+            post.setFillColor(sf::Color{80, 60, 30});
+            post.setPosition({tx - 1, ty - 14});
+            window.draw(post);
+            sf::RectangleShape flame({8, fh});
+            flame.setPosition({tx - 4, ty - 14 - fh});
+            sf::Color fc(255, 120 + flicker * 15, 30);
+            if (flicker < 2 || flicker > 4) fc = sf::Color(255, 80, 20);
+            flame.setFillColor(fc);
+            window.draw(flame);
+        };
+        draw_torch(77, 140);   // left tower
+        draw_torch(722, 140);  // right tower
+        // Torches on platforms at various positions
+        for (size_t pi = 0; pi < platforms.size(); pi++) {
+            float py = platforms[pi].get_bounds().position.y;
+            draw_torch(100, py);
+            draw_torch(700, py);
+        }
+    }
+
     // Lava at bottom
     if (lava_tex.getSize().x > 0) {
         sf::Sprite lava_spr(lava_tex);
@@ -499,12 +537,14 @@ void Game::draw() {
     }
 
     dk.draw(window);
-    if (princess_tex.getSize().x > 0) {
-        sf::Sprite spr(princess_tex);
-        spr.setPosition({70, 104});
-        window.draw(spr);
-    } else
-        window.draw(princess);
+    if (stage == 9) {
+        if (princess_tex.getSize().x > 0) {
+            sf::Sprite spr(princess_tex);
+            spr.setPosition({70, 104});
+            window.draw(spr);
+        } else
+            window.draw(princess);
+    }
     player.draw(window);
 
     for (auto& b : barrels)

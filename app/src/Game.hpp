@@ -44,7 +44,7 @@ private:
     sf::Text pause_reset_text{font};
 
     Player player;
-    DonkeyKong dk{60.f, 140.f};
+    DonkeyKong dk{60.f, 140.f, 1};
     sf::RectangleShape princess;
     sf::Texture princess_tex;
 

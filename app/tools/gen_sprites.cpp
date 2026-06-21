@@ -211,7 +211,7 @@ static sf::Image make_crown() {
     return img;
 }
 
-// Background: 800x750 dark with support structures
+// Background: 800x750 dark with towers and city silhouette
 static sf::Image make_background() {
     sf::Image img;
     img.resize({800, 750}, sf::Color::Transparent);
@@ -226,6 +226,56 @@ static sf::Image make_background() {
         sf::Color c(3, 3, b);
         for (int x = 0; x < 800; x++) img.setPixel({(unsigned)x, (unsigned)y}, c);
     }
+
+    // City silhouette at bottom (y=580-710)
+    sf::Color city(15, 12, 25);
+    sf::Color city_hl(25, 20, 35);
+    auto building = [&](int bx, int bw, int bh) {
+        fill(bx, 710 - bh, bx + bw, 710, city);
+        fill(bx, 710 - bh, bx + bw, 710 - bh + 3, city_hl);
+    };
+    building(20, 30, 80);   building(60, 25, 120);  building(100, 40, 60);
+    building(160, 30, 100); building(200, 20, 70);  building(230, 35, 130);
+    building(280, 25, 90);  building(320, 40, 110); building(370, 20, 60);
+    building(400, 30, 140); building(440, 25, 80);  building(480, 35, 120);
+    building(530, 20, 70);  building(560, 40, 100); building(610, 25, 130);
+    building(650, 30, 60);  building(690, 35, 110); building(740, 25, 90);
+    // Windows on buildings
+    auto win = [&](int wx, int wy) {
+        fill(wx, wy, wx + 3, wy + 4, C(60, 50, 30));
+        p(wx + 1, wy + 1, C(200, 180, 80));
+    };
+    win(70, 600); win(110, 630);  win(170, 610);  win(210, 650);
+    win(250, 590); win(300, 620); win(340, 600);  win(420, 580);
+    win(460, 630); win(500, 600); win(540, 650);  win(580, 620);
+    win(630, 590); win(700, 610); win(750, 630);
+
+    // Towers behind support columns
+    sf::Color tower(20, 18, 30);
+    sf::Color tower_hl(30, 25, 40);
+    // Left tower
+    fill(60, 140, 95, 340, tower);
+    fill(60, 140, 95, 145, tower_hl);
+    // Tower spire (triangle)
+    for (int y = 110; y < 140; y++) {
+        int half_w = (140 - y) * 2;
+        for (int x = 77 - half_w; x < 78 + half_w; x++)
+            if (x >= 60 && x < 95) p(x, y, C(25, 20, 35));
+    }
+    // Tower windows
+    win(65, 160); win(80, 160); win(65, 200); win(80, 200);
+    win(65, 240); win(80, 240); win(65, 280); win(80, 280);
+    // Right tower
+    fill(705, 140, 740, 340, tower);
+    fill(705, 140, 740, 145, tower_hl);
+    for (int y = 110; y < 140; y++) {
+        int half_w = (140 - y) * 2;
+        for (int x = 722 - half_w; x < 723 + half_w; x++)
+            if (x >= 705 && x < 740) p(x, y, C(25, 20, 35));
+    }
+    win(710, 160); win(725, 160); win(710, 200); win(725, 200);
+    win(710, 240); win(725, 240); win(710, 280); win(725, 280);
+
     // Sparse dim stars
     auto star = [&](int sx, int sy) {
         for (int dy = -1; dy <= 1; dy++)
@@ -249,10 +299,8 @@ static sf::Image make_background() {
     float levels[] = {140.f, 254.f, 368.f, 482.f, 596.f, 710.f};
     for (float ly : levels) {
         int y = int(ly);
-        // Beam across bottom of each platform
         fill(44, y + 10, 56, y + 16, C(70, 75, 85));
         fill(744, y + 10, 756, y + 16, C(70, 75, 85));
-        // Cross beam connectors
         fill(50, y + 10, 56, y + 14, C(90, 95, 105));
         fill(744, y + 10, 750, y + 14, C(90, 95, 105));
     }
@@ -268,14 +316,12 @@ static sf::Image make_background() {
         }
     };
     sf::Color brace(45, 50, 60);
-    // Left side X-brace between each pair of levels
     for (int i = 0; i < 5; i++) {
         int y_top = int(levels[i]) + 14;
         int y_bot = int(levels[i+1]);
         cross(48, y_top, 52, y_bot, brace);
         cross(52, y_top, 48, y_bot, brace);
     }
-    // Right side X-brace
     for (int i = 0; i < 5; i++) {
         int y_top = int(levels[i]) + 14;
         int y_bot = int(levels[i+1]);

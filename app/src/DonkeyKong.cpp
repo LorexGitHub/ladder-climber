@@ -1,6 +1,6 @@
 #include "DonkeyKong.hpp"
 
-DonkeyKong::DonkeyKong(float x, float y) {
+DonkeyKong::DonkeyKong(float x, float y, int stage) : monster_stage(stage) {
     shape.setFillColor(sf::Color{80, 60, 30});
     shape.setOrigin({24, 56});
     shape.setPosition({x, y});
@@ -12,6 +12,14 @@ void DonkeyKong::draw(sf::RenderWindow& win) const {
         sf::Sprite spr(texture);
         spr.setOrigin({24, 56});
         spr.setPosition(shape.getPosition());
+        if (monster_stage < 9) {
+            sf::Color tints[] = {
+                {220, 120, 120}, {120, 220, 120}, {120, 120, 220},
+                {220, 220, 100}, {200, 120, 220}, {100, 220, 220},
+                {220, 180, 100}, {180, 120, 220}
+            };
+            spr.setColor(tints[(monster_stage - 1) % 8]);
+        }
         win.draw(spr);
     } else {
         win.draw(shape);

@@ -5,7 +5,7 @@
 
 class DonkeyKong {
 public:
-    DonkeyKong(float x, float y);
+    DonkeyKong(float x, float y, int stage);
 
     void draw(sf::RenderWindow& win) const;
 
@@ -15,6 +15,7 @@ public:
 private:
     sf::RectangleShape shape{sf::Vector2f{48, 56}};
     sf::Texture texture;
+    int monster_stage = 9;
 };
 
 #endif
