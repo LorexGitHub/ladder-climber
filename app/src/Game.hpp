@@ -23,14 +23,17 @@ private:
     void spawn_barrel();
     void check_collisions();
     void start_game();
-    void load_crowns();
-    void save_crowns();
+    void setup_stage();
+    int get_stage() const;
+    sf::FloatRect get_segment_rect(int pi, int s) const;
+    bool is_solid(int pi, int s) const;
 
     sf::RenderWindow window;
     sf::Font font;
     sf::Text title_text{font};
     sf::Text status_text{font};
     sf::Text crowns_text{font};
+    sf::Text stage_text{font};
 
     sf::RectangleShape menu_btn;
     sf::Text menu_btn_text{font};
@@ -47,6 +50,7 @@ private:
 
     sf::Texture crown_tex;
     int crowns = 0;
+    int stage = 1;
 
     sf::Texture bg_tex;
     sf::Texture plat_tex;
@@ -57,9 +61,11 @@ private:
     std::vector<Platform> platforms;
     std::vector<Ladder> ladders;
     std::vector<std::unique_ptr<Barrel>> barrels;
+    std::vector<std::vector<bool>> platform_segments;
 
     float barrel_timer = 0;
     float pause_cd = 0;
+    float skip_cd = 0;
     float lava_anim = 0;
     State state = State::Menu;
     bool paused = false;

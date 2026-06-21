@@ -1,8 +1,61 @@
 #include "Game.hpp"
 #include <SFML/Window/Keyboard.hpp>
 #include <SFML/Window/Mouse.hpp>
-#include <fstream>
 #include <cmath>
+
+int Game::get_stage() const {
+    return crowns + 1;
+}
+
+void Game::setup_stage() {
+    platforms.clear();
+    ladders.clear();
+    platform_segments.clear();
+
+    stage = get_stage();
+
+    std::vector<float> ys;
+    if (stage == 1)
+        ys = {140.f, 330.f, 520.f, 710.f};
+    else
+        ys = {140.f, 254.f, 368.f, 482.f, 596.f, 710.f};
+
+    for (float y : ys)
+        platforms.emplace_back(50.f, y, 700.f);
+
+    int n = ys.size();
+    for (int i = 0; i < n - 1; i++) {
+        float x = ((n - 2 - i) % 2 == 0) ? 680.f : 130.f;
+        ladders.emplace_back(x, ys[i], ys[i + 1]);
+    }
+
+    platform_segments.resize(platforms.size(), std::vector<bool>(10, true));
+
+    if (stage >= 3) {
+        int num_with_holes = stage - 2;
+        if (num_with_holes > (int)platforms.size())
+            num_with_holes = (int)platforms.size();
+        for (int h = 0; h < num_with_holes; h++) {
+            int pi = (crowns * 7 + h * 13) % (int)platforms.size();
+            int seg = ((pi * 100 + crowns * 50 + h * 37) % 8 + 8) % 8 + 1;
+            if (!platform_segments[pi][seg]) {
+                pi = (pi + 1) % (int)platforms.size();
+                seg = ((pi * 100 + crowns * 50) % 8 + 8) % 8 + 1;
+            }
+            platform_segments[pi][seg] = false;
+        }
+    }
+}
+
+sf::FloatRect Game::get_segment_rect(int pi, int s) const {
+    auto& p = platforms[pi];
+    auto pos = p.get_bounds().position;
+    return {{pos.x + s * 70.f, pos.y}, {70.f, 14.f}};
+}
+
+bool Game::is_solid(int pi, int s) const {
+    return pi < (int)platform_segments.size() && s < 10 && platform_segments[pi][s];
+}
 
 Game::Game()
     : window(sf::VideoMode({800u, 750u}), "Donkey Kong") {
@@ -15,7 +68,6 @@ Game::Game()
     if (!font_ok) font_ok = font.openFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
     if (!font_ok) font_ok = font.openFromFile("/usr/share/fonts/Adwaita/AdwaitaSans-Regular.ttf");
 
-    // ---- Title ----
     title_text.setString("DONKEY KONG");
     title_text.setCharacterSize(48);
     title_text.setFillColor(sf::Color::Yellow);
@@ -23,11 +75,9 @@ Game::Game()
     title_text.setOrigin({tb.position.x + tb.size.x / 2, tb.position.y + tb.size.y / 2});
     title_text.setPosition({400, 120});
 
-    // ---- HUD text ----
     status_text.setCharacterSize(40);
     status_text.setFillColor(sf::Color::Yellow);
 
-    // ---- Menu "PLAY" button ----
     menu_btn.setSize({200, 60});
     menu_btn.setFillColor(sf::Color{50, 150, 50});
     menu_btn.setOrigin({100, 30});
@@ -39,7 +89,6 @@ Game::Game()
     menu_btn_text.setOrigin({mt.position.x + mt.size.x / 2, mt.position.y + mt.size.y / 2});
     menu_btn_text.setPosition({400, 340});
 
-    // ---- Pause buttons ----
     auto setup_btn = [](sf::RectangleShape& s, sf::Text& t, float x, float y, const std::string& label) {
         s.setSize({160, 50});
         s.setFillColor(sf::Color{60, 60, 180});
@@ -55,46 +104,32 @@ Game::Game()
     setup_btn(pause_resume_btn, pause_resume_text, 280, 280, "RESUME");
     setup_btn(pause_reset_btn, pause_reset_text, 520, 280, "RESET");
 
-    // ---- Princess (top-left) ----
     princess.setSize({20, 36});
     princess.setFillColor(sf::Color::Magenta);
     princess.setPosition({70, 104});
-    if (princess_tex.loadFromFile("assets/sprites/princess.png")) {
-    }
+    [[maybe_unused]] bool pt_loaded = princess_tex.loadFromFile("assets/sprites/princess.png");
 
-    // ---- Crown counter ----
     crowns_text.setCharacterSize(24);
     crowns_text.setFillColor(sf::Color::Yellow);
     [[maybe_unused]] bool crown_loaded = crown_tex.loadFromFile("assets/sprites/crown.png");
-    load_crowns();
 
-    // ---- Background & tile textures ----
+    stage_text.setCharacterSize(18);
+    stage_text.setFillColor(sf::Color{180, 180, 200});
+
     [[maybe_unused]] bool bg_ok = bg_tex.loadFromFile("assets/sprites/background.png");
-    [[maybe_unused]] bool pt_ok = plat_tex.loadFromFile("assets/sprites/platform.png");
+    [[maybe_unused]] bool p_ok = plat_tex.loadFromFile("assets/sprites/platform.png");
     [[maybe_unused]] bool lt_ok = ladder_tex.loadFromFile("assets/sprites/ladder.png");
     [[maybe_unused]] bool lv_ok = lava_tex.loadFromFile("assets/sprites/lava.png");
     bg_shape.setFillColor(sf::Color{20, 20, 40});
 
-    // ---- Platforms (100px gaps, 6 levels) ----
-    platforms.emplace_back(50.f, 140.f, 700.f);  // P0 – top (full width)
-    platforms.emplace_back(50.f, 254.f, 700.f);  // P1
-    platforms.emplace_back(50.f, 368.f, 700.f);  // P2
-    platforms.emplace_back(50.f, 482.f, 700.f);  // P3
-    platforms.emplace_back(50.f, 596.f, 700.f);  // P4
-    platforms.emplace_back(50.f, 710.f, 700.f);  // P5 – ground
-
-    // ---- Ladders (alternating sides, bottom → top) ----
-    ladders.emplace_back(680.f, 596.f, 710.f);  // P5→P4  (right)
-    ladders.emplace_back(130.f, 482.f, 596.f);  // P4→P3  (left)
-    ladders.emplace_back(680.f, 368.f, 482.f);  // P3→P2  (right)
-    ladders.emplace_back(130.f, 254.f, 368.f);  // P2→P1  (left)
-    ladders.emplace_back(680.f, 140.f, 254.f);  // P1→P0  (right)
-
-    // ---- Player start (left side of ground) ----
+    setup_stage();
     player.set_position(100.f, 710.f);
 }
 
 void Game::start_game() {
+    if (crowns >= 9)
+        crowns = 0;
+    setup_stage();
     state = State::Playing;
     paused = false;
     barrels.clear();
@@ -103,9 +138,9 @@ void Game::start_game() {
     player.set_dead(false);
     dk = DonkeyKong(60.f, 140.f);
     player.set_climbing(false);
-    // Start with barrels on P0-P4 (P5 is player spawn)
-    for (int lvl = 0; lvl < 5; lvl++) {
-        float y = 140.f + lvl * 114.f;
+
+    for (int lvl = 0; lvl < (int)platforms.size() - 1; lvl++) {
+        float y = platforms[lvl].get_bounds().position.y;
         if (lvl % 2 == 0)
             barrels.push_back(std::make_unique<Barrel>(60.f, y, 180.f, lvl));
         else
@@ -144,6 +179,23 @@ void Game::handle_input(float dt) {
                 if (menu_btn.getGlobalBounds().contains(wp))
                     start_game();
             }
+        }
+    }
+
+    // Stage skip keys (U = back, I = forward)
+    skip_cd -= dt;
+    if (skip_cd <= 0) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::U)) {
+            if (crowns > 0) crowns--;
+            else crowns = 0;
+            setup_stage();
+            skip_cd = 0.3f;
+        }
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::I)) {
+            if (crowns < 8) crowns++;
+            else crowns = 8;
+            setup_stage();
+            skip_cd = 0.3f;
         }
     }
 
@@ -199,14 +251,11 @@ void Game::handle_input(float dt) {
 }
 
 void Game::update(float dt) {
-    // Lava animation
     lava_anim += dt * 30.f;
     if (lava_anim > 800) lava_anim = 0;
 
-    // ----- Player -----
     player.update(dt);
 
-    // Clamp player to ladder bounds; auto-stop at endpoints
     if (player.is_climbing()) {
         for (auto& l : ladders) {
             if (player.get_bounds().findIntersection(l.get_bounds()).has_value()) {
@@ -226,30 +275,45 @@ void Game::update(float dt) {
         }
     }
 
-    // Player-platform collision (skip while climbing)
+    // Player-platform collision using segments
     if (!player.is_climbing()) {
         bool on_any = false;
-        for (auto& p : platforms) {
-            auto overlap = player.get_bounds().findIntersection(p.get_bounds());
+        for (int pi = 0; pi < (int)platforms.size(); pi++) {
+            auto overlap = player.get_bounds().findIntersection(platforms[pi].get_bounds());
             if (overlap.has_value()) {
                 float player_bottom = player.get_pos().y + 16;
-                float platform_top  = p.get_bounds().position.y;
+                float platform_top = platforms[pi].get_bounds().position.y;
                 if (player_bottom >= platform_top && player_bottom < platform_top + 24) {
-                    float p_left  = p.get_bounds().position.x + 12;
-                    float p_right = p.get_bounds().position.x + p.get_bounds().size.x - 12;
-                    float px = player.get_pos().x;
-                    if (px < p_left)  px = p_left;
-                    if (px > p_right) px = p_right;
-                    player.set_position(px, platform_top);
-                    on_any = true;
+                    // Check if player is over a solid segment
+                    bool on_solid = false;
+                    for (int s = 0; s < 10; s++) {
+                        if (!is_solid(pi, s)) continue;
+                        auto seg = get_segment_rect(pi, s);
+                        if (player.get_bounds().findIntersection(seg).has_value()) {
+                            on_solid = true;
+                            break;
+                        }
+                    }
+                    if (on_solid) {
+                        // Clamp to full platform bounds, not segment boundaries
+                        auto ppos = platforms[pi].get_bounds();
+                        float p_left  = ppos.position.x + 12;
+                        float p_right = ppos.position.x + ppos.size.x - 12;
+                        float px = player.get_pos().x;
+                        if (px < p_left)  px = p_left;
+                        if (px > p_right) px = p_right;
+                        player.set_position(px, platform_top);
+                        on_any = true;
+                        break;
+                    }
                 }
             }
-        }
+            }
         if (!on_any)
             player.set_on_ground(false);
     }
 
-    // ----- Barrels -----
+    // Barrels
     barrel_timer += dt;
     if (barrel_timer >= BARREL_INTERVAL) {
         spawn_barrel();
@@ -259,37 +323,42 @@ void Game::update(float dt) {
     for (auto it = barrels.begin(); it != barrels.end();) {
         (*it)->update(dt);
 
-        // Barrel-platform collision
-        for (auto& p : platforms) {
-            auto ov = (*it)->get_bounds().findIntersection(p.get_bounds());
+        // Barrel-platform collision with segments
+        for (int pi = 0; pi < (int)platforms.size(); pi++) {
+            auto ov = (*it)->get_bounds().findIntersection(platforms[pi].get_bounds());
             if (ov.has_value()) {
-                float ptop = p.get_bounds().position.y;
+                float ptop = platforms[pi].get_bounds().position.y;
                 float bbot = (*it)->get_pos().y + 12;
                 if (bbot >= ptop - 4 && bbot < ptop + 20) {
-                    (*it)->land_on_surface(ptop - 12);
-                    break;
+                    // Check if barrel is over a solid segment
+                    for (int s = 0; s < 10; s++) {
+                        if (!is_solid(pi, s)) continue;
+                        auto seg = get_segment_rect(pi, s);
+                        if ((*it)->get_bounds().findIntersection(seg).has_value()) {
+                            (*it)->land_on_surface(ptop - 12);
+                            (*it)->set_level(pi);
+                            (*it)->set_velocity((pi % 2 == 0) ? 180.f : -180.f, 0);
+                            goto barrel_landed;
+                        }
+                    }
                 }
             }
         }
+        barrel_landed:;
 
-        // Barrel cascade: even levels roll right, odd roll left
         int lvl = (*it)->get_level();
-        float bx = (*it)->get_pos().x;
-        bool at_edge = (lvl % 2 == 0) ? (bx > 740) : (bx < 60);
-        if (at_edge && lvl < 5) {
-            int next = lvl + 1;
-            float next_y = 140.f + next * 114.f;
-            float new_x, new_vx;
-            if (next % 2 == 0) {
-                new_x = 60.f;
-                new_vx = 180.f;
-            } else {
-                new_x = 728.f;
-                new_vx = -180.f;
+        if (lvl >= 0 && lvl < (int)platforms.size()) {
+            float bx = (*it)->get_pos().x;
+            bool at_edge = (lvl % 2 == 0) ? (bx > 740) : (bx < 60);
+            if (at_edge && lvl < (int)platforms.size() - 1) {
+                int next = lvl + 1;
+                float next_y = platforms[next].get_bounds().position.y;
+                float new_x = (next % 2 == 0) ? 60.f : 728.f;
+                float new_vx = (next % 2 == 0) ? 180.f : -180.f;
+                (*it)->set_position(new_x, next_y);
+                (*it)->set_velocity(new_vx, 0);
+                (*it)->set_level(next);
             }
-            (*it)->set_position(new_x, next_y);
-            (*it)->set_velocity(new_vx, 0);
-            (*it)->set_level(next);
         }
 
         if (!(*it)->is_alive())
@@ -298,26 +367,29 @@ void Game::update(float dt) {
             ++it;
     }
 
-    // ----- Collisions -----
     check_collisions();
 
     // Lava kills
     if (player.get_pos().y > 710 && state == State::Playing) {
         state = State::GameOver;
         player.set_dead(true);
+        crowns = 0;
     }
 
-    // ----- Win? (player must reach princess at top-left) -----
-    if (player.get_pos().y < 140 && player.get_pos().x < 100 && state == State::Playing) {
-        state = State::Won;
-        crowns++;
-        save_crowns();
+    // Win: player reached top platform near princess
+    if (!platforms.empty()) {
+        float top_y = platforms[0].get_bounds().position.y;
+        if (player.get_pos().y < top_y + 30 && player.get_pos().x < 150 && state == State::Playing) {
+            state = State::Won;
+            crowns++;
+        }
     }
 }
 
 void Game::spawn_barrel() {
-    // Spawn on P0 (top), left side, rolling right
-    barrels.push_back(std::make_unique<Barrel>(60.f, 140.f, 180.f, 0));
+    if (platforms.empty()) return;
+    float y = platforms[0].get_bounds().position.y;
+    barrels.push_back(std::make_unique<Barrel>(60.f, y, 180.f, 0));
 }
 
 void Game::check_collisions() {
@@ -325,19 +397,10 @@ void Game::check_collisions() {
         if (player.get_bounds().findIntersection(b->get_bounds()).has_value()) {
             state = State::GameOver;
             player.set_dead(true);
+            crowns = 0;
             return;
         }
     }
-}
-
-void Game::load_crowns() {
-    std::ifstream f("crowns.dat");
-    if (f) { f >> crowns; }
-}
-
-void Game::save_crowns() {
-    std::ofstream f("crowns.dat");
-    f << crowns;
 }
 
 void Game::draw() {
@@ -347,7 +410,6 @@ void Game::draw() {
         window.draw(title_text);
         window.draw(menu_btn);
         window.draw(menu_btn_text);
-        // Crown counter
         std::string cstr = std::to_string(crowns);
         crowns_text.setString(cstr);
         crowns_text.setPosition({400, 200});
@@ -363,8 +425,6 @@ void Game::draw() {
         return;
     }
 
-    // ---- Game elements (Playing / GameOver / Won) ----
-    // Background
     if (bg_tex.getSize().x > 0) {
         sf::Sprite bg_spr(bg_tex);
         window.draw(bg_spr);
@@ -377,7 +437,6 @@ void Game::draw() {
         sf::Sprite lava_spr(lava_tex);
         lava_spr.setPosition({0.f, 710.f});
         window.draw(lava_spr);
-        // Animated glow
         sf::RectangleShape glow({800, 40});
         glow.setPosition({0, 710});
         int a = 20 + int(15 * std::sin(lava_anim * 0.1));
@@ -390,16 +449,35 @@ void Game::draw() {
         window.draw(lava_fill);
     }
 
-    // Platforms
+    // Platforms with holes
     if (plat_tex.getSize().x > 0) {
-        for (auto& p : platforms) {
+        for (int pi = 0; pi < (int)platforms.size(); pi++) {
+            auto& p = platforms[pi];
+            auto ppos = p.get_bounds().position;
             sf::Sprite p_spr(plat_tex);
-            p_spr.setPosition(p.get_bounds().position);
+            p_spr.setPosition(ppos);
             window.draw(p_spr);
+            // Draw holes as dark rectangles
+            for (int s = 0; s < 10; s++) {
+                if (is_solid(pi, s)) continue;
+                sf::RectangleShape hole({70, 14});
+                hole.setPosition({ppos.x + s * 70.f, ppos.y});
+                hole.setFillColor(sf::Color{5, 5, 15});
+                window.draw(hole);
+            }
         }
     } else {
-        for (auto& p : platforms)
-            window.draw(p.get_shape());
+        for (int pi = 0; pi < (int)platforms.size(); pi++) {
+            auto& p = platforms[pi];
+            auto ppos = p.get_bounds().position;
+            sf::RectangleShape seg_shape({70, 14});
+            seg_shape.setFillColor(sf::Color{139, 69, 19});
+            for (int s = 0; s < 10; s++) {
+                if (!is_solid(pi, s)) continue;
+                seg_shape.setPosition({ppos.x + s * 70.f, ppos.y});
+                window.draw(seg_shape);
+            }
+        }
     }
 
     // Ladders
@@ -432,18 +510,12 @@ void Game::draw() {
     for (auto& b : barrels)
         b->draw(window);
 
-    // Crown counter HUD
-    std::string cstr = std::to_string(crowns);
-    crowns_text.setString(cstr);
+    // Stage number (top-right)
+    std::string sstr = std::to_string(stage);
+    crowns_text.setString(sstr);
     crowns_text.setPosition({770, 10});
     crowns_text.setOrigin({crowns_text.getLocalBounds().size.x, 0});
     window.draw(crowns_text);
-    if (crown_tex.getSize().x > 0) {
-        sf::Sprite crown_spr(crown_tex);
-        crown_spr.setOrigin({16, 16});
-        crown_spr.setPosition({770 - crowns_text.getLocalBounds().size.x - 8, 18});
-        window.draw(crown_spr);
-    }
 
     if (paused) {
         sf::RectangleShape overlay({800, 750});
@@ -474,16 +546,36 @@ void Game::draw() {
     }
 
     if (state == State::Won) {
-        status_text.setString("YOU WIN!");
-        status_text.setPosition({300, 200});
-        window.draw(status_text);
-        std::string cstr = "CROWNS: " + std::to_string(crowns);
-        crowns_text.setString(cstr);
-        crowns_text.setPosition({400, 260});
-        crowns_text.setOrigin({crowns_text.getLocalBounds().size.x / 2, 0});
-        window.draw(crowns_text);
+        if (crowns >= 9) {
+            status_text.setString("CONGRATULATIONS!");
+            status_text.setPosition({200, 160});
+            window.draw(status_text);
+            sf::Text congrats_text(font);
+            congrats_text.setString("You completed the Donkey Kong challenge!");
+            congrats_text.setCharacterSize(22);
+            congrats_text.setFillColor(sf::Color::White);
+            auto ct = congrats_text.getLocalBounds();
+            congrats_text.setOrigin({ct.position.x + ct.size.x / 2, ct.position.y + ct.size.y / 2});
+            congrats_text.setPosition({400, 230});
+            window.draw(congrats_text);
+            std::string cstr = "CROWNS: " + std::to_string(crowns);
+            crowns_text.setString(cstr);
+            crowns_text.setPosition({400, 280});
+            crowns_text.setOrigin({crowns_text.getLocalBounds().size.x / 2, 0});
+            window.draw(crowns_text);
+            menu_btn_text.setString("PLAY AGAIN");
+        } else {
+            status_text.setString("YOU WIN!");
+            status_text.setPosition({300, 200});
+            window.draw(status_text);
+            std::string cstr = "CROWNS: " + std::to_string(crowns);
+            crowns_text.setString(cstr);
+            crowns_text.setPosition({400, 260});
+            crowns_text.setOrigin({crowns_text.getLocalBounds().size.x / 2, 0});
+            window.draw(crowns_text);
+            menu_btn_text.setString("NEXT STAGE");
+        }
         menu_btn.setPosition({400, 340});
-        menu_btn_text.setString("PLAY AGAIN");
         auto mt = menu_btn_text.getLocalBounds();
         menu_btn_text.setOrigin({mt.position.x + mt.size.x / 2, mt.position.y + mt.size.y / 2});
         menu_btn_text.setPosition({400, 340});
