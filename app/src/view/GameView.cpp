@@ -6,6 +6,27 @@
 #include "../model/DonkeyKong.hpp"
 #include <cmath>
 
+// ── Layout constants for title screen ──
+static sf::FloatRect r_easy()   { return {{160, 260}, {130, 50}}; }
+static sf::FloatRect r_normal() { return {{335, 260}, {130, 50}}; }
+static sf::FloatRect r_hard()   { return {{510, 260}, {130, 50}}; }
+static sf::FloatRect r_custom() { return {{320, 340}, {160, 50}}; }
+static sf::FloatRect r_play_t() { return {{320, 430}, {160, 50}}; }
+
+// ── Layout constants for custom screen ──
+static sf::FloatRect r_speed()   { return {{250, 230}, {300, 20}}; }
+static sf::FloatRect r_interval(){ return {{250, 350}, {300, 20}}; }
+static sf::FloatRect r_cplay()   { return {{320, 420}, {160, 50}}; }
+
+sf::FloatRect GameView::title_btn_easy()   { return r_easy(); }
+sf::FloatRect GameView::title_btn_normal() { return r_normal(); }
+sf::FloatRect GameView::title_btn_hard()   { return r_hard(); }
+sf::FloatRect GameView::title_btn_custom() { return r_custom(); }
+sf::FloatRect GameView::title_btn_play()   { return r_play_t(); }
+sf::FloatRect GameView::custom_speed_track()   { return r_speed(); }
+sf::FloatRect GameView::custom_interval_track(){ return r_interval(); }
+sf::FloatRect GameView::custom_btn_play()      { return r_cplay(); }
+
 GameView::GameView()
     : window(sf::VideoMode({800u, 750u}), "Donkey Kong") {
 
@@ -17,7 +38,7 @@ GameView::GameView()
     title_text.setFillColor(sf::Color::Yellow);
     auto tb = title_text.getLocalBounds();
     title_text.setOrigin({tb.position.x + tb.size.x / 2, tb.position.y + tb.size.y / 2});
-    title_text.setPosition({400, 120});
+    title_text.setPosition({400, 100});
 
     status_text.setCharacterSize(40);
     status_text.setFillColor(sf::Color::Yellow);
@@ -45,8 +66,8 @@ GameView::GameView()
         t.setOrigin({lb.position.x + lb.size.x / 2, lb.position.y + lb.size.y / 2});
         t.setPosition({x, y});
     };
-    setup_btn(pause_resume_btn, pause_resume_text, 300, 280, "RESUME");
-    setup_btn(pause_reset_btn, pause_reset_text, 500, 280, "RESET");
+    setup_btn(pause_resume_btn, pause_resume_text, 400, 260, "RESUME");
+    setup_btn(pause_reset_btn, pause_reset_text, 400, 340, "MENU");
 
     princess.setSize({20, 36});
     princess.setFillColor(sf::Color::Magenta);
@@ -111,6 +132,42 @@ sf::FloatRect GameView::get_mute_btn_bounds() const {
     return mute_btn.getGlobalBounds();
 }
 
+sf::FloatRect GameView::draw_btn(sf::FloatRect rect, const std::string& label, const sf::Color& color) {
+    sf::RectangleShape btn({rect.size.x, rect.size.y});
+    btn.setPosition({rect.position.x, rect.position.y});
+    btn.setFillColor(color);
+    window.draw(btn);
+    sf::Text txt(font, label, 24);
+    txt.setFillColor(sf::Color::White);
+    auto tb = txt.getLocalBounds();
+    txt.setOrigin({tb.position.x + tb.size.x / 2, tb.position.y + tb.size.y / 2});
+    txt.setPosition({rect.position.x + rect.size.x / 2, rect.position.y + rect.size.y / 2});
+    window.draw(txt);
+    return rect;
+}
+
+float GameView::draw_slider(float cx, float cy, float min_val, float max_val, float val) {
+    float track_w = 300.f;
+    float norm = (val - min_val) / (max_val - min_val);
+    float hx = cx - track_w / 2.f + norm * track_w;
+
+    sf::RectangleShape track({track_w, 6.f});
+    track.setOrigin({track_w / 2.f, 3.f});
+    track.setPosition({cx, cy});
+    track.setFillColor(sf::Color{100, 100, 120});
+    window.draw(track);
+
+    sf::CircleShape handle(8.f);
+    handle.setOrigin({8.f, 8.f});
+    handle.setPosition({hx, cy});
+    handle.setFillColor(sf::Color{200, 200, 100});
+    handle.setOutlineColor(sf::Color::White);
+    handle.setOutlineThickness(2.f);
+    window.draw(handle);
+
+    return hx;
+}
+
 void GameView::draw(const GameState& state, const Player& player,
                     const std::vector<Platform>& platforms,
                     const std::vector<Ladder>& ladders,
@@ -119,28 +176,97 @@ void GameView::draw(const GameState& state, const Player& player,
 
     window.clear(sf::Color{20, 20, 40});
 
-    if (state.phase == GameState::Phase::Menu) {
+    // ── TITLE SCREEN ──
+    if (state.phase == GameState::Phase::Title) {
         sf::RectangleShape overlay({800, 750});
         overlay.setFillColor(sf::Color{0, 0, 0, 180});
         window.draw(overlay);
         window.draw(title_text);
-        window.draw(menu_btn);
-        window.draw(menu_btn_text);
+
+        // Crown display
         std::string cstr = std::to_string(state.crowns);
         crowns_text.setString(cstr);
-        crowns_text.setPosition({400, 200});
+        crowns_text.setPosition({400, 170});
         crowns_text.setOrigin({crowns_text.getLocalBounds().size.x / 2, 0});
         window.draw(crowns_text);
         if (crown_tex.getSize().x > 0) {
             sf::Sprite crown_spr(crown_tex);
             crown_spr.setOrigin({16, 16});
-            crown_spr.setPosition({400 - crowns_text.getLocalBounds().size.x / 2 - 24, 204});
+            crown_spr.setPosition({400 - crowns_text.getLocalBounds().size.x / 2 - 24, 174});
             window.draw(crown_spr);
         }
+
+        // Difficulty buttons
+        auto is_sel = [&](GameState::Difficulty d) { return state.difficulty == d; };
+        auto diff_color = [&](GameState::Difficulty d) {
+            return is_sel(d) ? sf::Color{80, 180, 80} : sf::Color{60, 60, 140};
+        };
+        draw_btn(r_easy(),   "EASY",   diff_color(GameState::Difficulty::Easy));
+        draw_btn(r_normal(), "NORMAL", diff_color(GameState::Difficulty::Normal));
+        draw_btn(r_hard(),   "HARD",   diff_color(GameState::Difficulty::Hard));
+        draw_btn(r_custom(), "CUSTOM", diff_color(GameState::Difficulty::Custom));
+        draw_btn(r_play_t(), "PLAY",   sf::Color{50, 150, 50});
+
         window.display();
         return;
     }
 
+    // ── CUSTOM DIFFICULTY SCREEN ──
+    if (state.phase == GameState::Phase::Custom) {
+        sf::RectangleShape overlay({800, 750});
+        overlay.setFillColor(sf::Color{0, 0, 0, 200});
+        window.draw(overlay);
+
+        sf::Text heading(font, "CUSTOM DIFFICULTY", 32);
+        heading.setFillColor(sf::Color::Yellow);
+        auto hb = heading.getLocalBounds();
+        heading.setOrigin({hb.position.x + hb.size.x / 2, hb.position.y + hb.size.y / 2});
+        heading.setPosition({400, 100});
+        window.draw(heading);
+
+        // Speed label + slider
+        {
+            sf::Text lbl(font, "Barrel Speed:", 20);
+            lbl.setFillColor(sf::Color::White);
+            auto lb = lbl.getLocalBounds();
+            lbl.setOrigin({lb.position.x + lb.size.x / 2, 0});
+            lbl.setPosition({400, 170});
+            window.draw(lbl);
+            draw_slider(400, 240, 60.f, 400.f, state.custom_speed);
+            sf::Text val(font, std::to_string(int(state.custom_speed)), 18);
+            val.setFillColor(sf::Color{200, 200, 100});
+            auto vb = val.getLocalBounds();
+            val.setOrigin({vb.position.x + vb.size.x / 2, 0});
+            val.setPosition({400, 260});
+            window.draw(val);
+        }
+
+        // Interval label + slider
+        {
+            sf::Text lbl(font, "Barrel Rate (seconds):", 20);
+            lbl.setFillColor(sf::Color::White);
+            auto lb = lbl.getLocalBounds();
+            lbl.setOrigin({lb.position.x + lb.size.x / 2, 0});
+            lbl.setPosition({400, 290});
+            window.draw(lbl);
+            draw_slider(400, 360, 0.5f, 5.f, state.custom_interval);
+            char ibuf[16];
+            std::snprintf(ibuf, sizeof(ibuf), "%.1f s", (double)state.custom_interval);
+            sf::Text val(font, ibuf, 18);
+            val.setFillColor(sf::Color{200, 200, 100});
+            auto vb2 = val.getLocalBounds();
+            val.setOrigin({vb2.position.x + vb2.size.x / 2, 0});
+            val.setPosition({400, 380});
+            window.draw(val);
+        }
+
+        draw_btn(r_cplay(), "PLAY", sf::Color{50, 150, 50});
+
+        window.display();
+        return;
+    }
+
+    // ── GAME BACKGROUND ──
     if (bg_tex.getSize().x > 0) {
         sf::Sprite bg_spr(bg_tex);
         window.draw(bg_spr);
@@ -279,8 +405,7 @@ void GameView::draw(const GameState& state, const Player& player,
     window.draw(mute_btn);
     window.draw(mute_text);
 
-    // Lives display
-    // Hearts for lives at bottom-center
+    // Lives display at bottom-center
     {
         int max_lives = 3;
         float spacing = 22.f;
@@ -342,6 +467,7 @@ void GameView::draw(const GameState& state, const Player& player,
         }
     }
 
+    // ── PAUSED OVERLAY ──
     if (state.paused) {
         sf::RectangleShape overlay({800, 750});
         overlay.setFillColor(sf::Color{0, 0, 0, 150});
@@ -350,7 +476,7 @@ void GameView::draw(const GameState& state, const Player& player,
         status_text.setString("PAUSED");
         auto stp = status_text.getLocalBounds();
         status_text.setOrigin({stp.size.x / 2, stp.size.y / 2});
-        status_text.setPosition({400, 200});
+        status_text.setPosition({400, 180});
         window.draw(status_text);
 
         window.draw(pause_resume_btn);
@@ -359,6 +485,7 @@ void GameView::draw(const GameState& state, const Player& player,
         window.draw(pause_reset_text);
     }
 
+    // ── GAME OVER OVERLAY ──
     if (state.phase == GameState::Phase::GameOver) {
         sf::RectangleShape overlay({800, 750});
         overlay.setFillColor(sf::Color{0, 0, 0, 150});
@@ -366,10 +493,10 @@ void GameView::draw(const GameState& state, const Player& player,
         status_text.setString("GAME OVER");
         auto stg = status_text.getLocalBounds();
         status_text.setOrigin({stg.size.x / 2, stg.size.y / 2});
-        status_text.setPosition({400, 220});
+        status_text.setPosition({400, 250});
         window.draw(status_text);
         menu_btn.setPosition({400, 340});
-        menu_btn_text.setString("PLAY AGAIN");
+        menu_btn_text.setString("MENU");
         auto mt = menu_btn_text.getLocalBounds();
         menu_btn_text.setOrigin({mt.position.x + mt.size.x / 2, mt.position.y + mt.size.y / 2});
         menu_btn_text.setPosition({400, 340});
@@ -377,6 +504,7 @@ void GameView::draw(const GameState& state, const Player& player,
         window.draw(menu_btn_text);
     }
 
+    // ── STAGE COMPLETE / WON OVERLAY ──
     if (state.phase == GameState::Phase::Won) {
         sf::RectangleShape overlay({800, 750});
         overlay.setFillColor(sf::Color{0, 0, 0, 150});
@@ -452,8 +580,8 @@ void GameView::draw(const GameState& state, const Player& player,
             window.draw(ov_text);
         }
 
-        std::string sstr = std::to_string(state.stage);
-        stage_text.setString(sstr);
+        std::string sstr2 = std::to_string(state.stage);
+        stage_text.setString(sstr2);
         stage_text.setPosition({770, 10});
         stage_text.setOrigin({stage_text.getLocalBounds().size.x, 0});
         window.draw(stage_text);
@@ -461,7 +589,7 @@ void GameView::draw(const GameState& state, const Player& player,
         float bx[] = {300, 500};
         const char* labels[] = {
             state.crowns >= 9 ? "PLAY AGAIN" : "NEXT STAGE",
-            "RESET"
+            "MENU"
         };
         sf::RectangleShape* btns[] = {&menu_btn, &pause_reset_btn};
         sf::Text* btn_texts[] = {&menu_btn_text, &pause_reset_text};

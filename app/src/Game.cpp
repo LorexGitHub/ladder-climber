@@ -7,12 +7,23 @@
 Game::Game()
     : controller(view, state, player, ladders, music,
                  [this]() { start_game(); },
-                 [this]() { play_random_music(); }) {
+                 [this]() { play_random_music(); },
+                 [this]() { go_to_title(); }) {
     std::srand((unsigned)std::time(nullptr));
     state.load_records();
-    play_random_music();
-    setup_stage();
+    go_to_title();
+}
+
+void Game::go_to_title() {
+    state.phase = GameState::Phase::Title;
+    state.paused = false;
+    state.overall_timer = 0;
+    state.lives = 3;
+    barrels.clear();
     player.set_position(100.f, 710.f);
+    player.set_dead(false);
+    player.set_climbing(false);
+    play_random_music();
 }
 
 void Game::play_random_music() {
@@ -47,12 +58,13 @@ void Game::start_game() {
     dk = DonkeyKong(60.f, 140.f, state.stage);
     player.set_climbing(false);
 
+    float speed = state.get_barrel_speed();
     for (int lvl = 0; lvl < (int)platforms.size() - 1; lvl++) {
         float y = platforms[lvl].get_bounds().position.y;
         if (lvl % 2 == 0)
-            barrels.push_back(std::make_unique<Barrel>(60.f, y, 180.f, lvl));
+            barrels.push_back(std::make_unique<Barrel>(60.f, y, speed, lvl));
         else
-            barrels.push_back(std::make_unique<Barrel>(728.f, y, -180.f, lvl));
+            barrels.push_back(std::make_unique<Barrel>(728.f, y, -speed, lvl));
     }
     state.stage_timer = 0;
 }
@@ -174,7 +186,7 @@ void Game::update(float dt) {
 
     // Barrels
     barrel_timer += dt;
-    if (barrel_timer >= BARREL_INTERVAL) {
+    if (barrel_timer >= state.get_barrel_interval()) {
         spawn_barrel();
         barrel_timer = 0;
     }
@@ -195,7 +207,8 @@ void Game::update(float dt) {
                         if ((*it)->get_bounds().findIntersection(seg).has_value()) {
                             (*it)->land_on_surface(ptop - 12);
                             (*it)->set_level(pi);
-                            (*it)->set_velocity((pi % 2 == 0) ? 180.f : -180.f, 0);
+                            float bs = state.get_barrel_speed();
+                            (*it)->set_velocity((pi % 2 == 0) ? bs : -bs, 0);
                             goto barrel_landed;
                         }
                     }
@@ -212,7 +225,8 @@ void Game::update(float dt) {
                 int next = lvl + 1;
                 float next_y = platforms[next].get_bounds().position.y;
                 float new_x = (next % 2 == 0) ? 60.f : 728.f;
-                float new_vx = (next % 2 == 0) ? 180.f : -180.f;
+                float bs = state.get_barrel_speed();
+                float new_vx = (next % 2 == 0) ? bs : -bs;
                 (*it)->set_position(new_x, next_y);
                 (*it)->set_velocity(new_vx, 0);
                 (*it)->set_level(next);
@@ -261,7 +275,7 @@ void Game::update(float dt) {
 void Game::spawn_barrel() {
     if (platforms.empty()) return;
     float y = platforms[0].get_bounds().position.y;
-    barrels.push_back(std::make_unique<Barrel>(60.f, y, 180.f, 0));
+    barrels.push_back(std::make_unique<Barrel>(60.f, y, state.get_barrel_speed(), 0));
 }
 
 void Game::check_collisions() {

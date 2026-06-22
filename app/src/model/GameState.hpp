@@ -10,29 +10,33 @@ struct TimeRecord {
     float overall_time = -1;
 };
 
-/// Pure game state: phase, stage progress, timers, lives, and records.
-/// Owned by Game and read/written by GameController and GameView.
+/// Pure game state: phase, stage progress, timers, lives, records, difficulty.
 class GameState {
 public:
-    enum class Phase { Menu, Playing, GameOver, Won };
+    enum class Phase { Title, Custom, Playing, GameOver, Won };
+    enum class Difficulty { Easy, Normal, Hard, Custom };
 
     int stage = 1;
     int crowns = 0;
     int lives = 3;
     bool paused = false;
-    Phase phase = Phase::Menu;
+    Phase phase = Phase::Title;
     float overall_timer = 0.f;
     float stage_timer = 0.f;
     float skip_cd = 0.f;
     bool muted = false;
 
+    Difficulty difficulty = Difficulty::Normal;
+    float custom_speed = 150.f;
+    float custom_interval = 2.5f;
+
     TimeRecord records;
 
-    /// Persists records to disk.
+    float get_barrel_speed() const;
+    float get_barrel_interval() const;
+
     void save_records(const char* path = "assets/times.dat");
-    /// Loads records from disk.
     void load_records(const char* path = "assets/times.dat");
-    /// Formats a time in seconds as "MM:SS.hh" (or "NONE" if negative).
     static std::string fmt_time(float t);
 };
 

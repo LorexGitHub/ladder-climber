@@ -25,6 +25,7 @@ public:
 private:
     void update(float dt);
     void start_game();
+    void go_to_title();
     void setup_stage();
     void spawn_barrel();
     void check_collisions();
@@ -41,8 +42,6 @@ private:
     float lava_anim = 0;
     sf::Music music;
     GameController controller;
-
-    static constexpr float BARREL_INTERVAL = 2.0f;
 };
 
 #endif

@@ -24,3 +24,23 @@ void GameState::save_records(const char* path) {
     for (int i = 0; i < 9; i++) f << records.stage_times[i] << "\n";
     f << records.overall_time;
 }
+
+float GameState::get_barrel_speed() const {
+    switch (difficulty) {
+        case Difficulty::Easy:   return 120.f;
+        case Difficulty::Normal: return 180.f;
+        case Difficulty::Hard:   return 260.f;
+        case Difficulty::Custom: return custom_speed;
+    }
+    return 180.f;
+}
+
+float GameState::get_barrel_interval() const {
+    switch (difficulty) {
+        case Difficulty::Easy:   return 3.0f;
+        case Difficulty::Normal: return 2.0f;
+        case Difficulty::Hard:   return 1.2f;
+        case Difficulty::Custom: return custom_interval;
+    }
+    return 2.0f;
+}
