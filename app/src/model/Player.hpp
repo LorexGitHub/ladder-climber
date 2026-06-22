@@ -3,6 +3,8 @@
 
 #include <SFML/Graphics.hpp>
 
+/// The player character: runs, jumps, climbs ladders, dies.
+/// Physics constants (SPEED, JUMP_VEL, GRAVITY, AIR_ACCEL) govern movement.
 class Player {
 public:
     Player();

@@ -3,6 +3,8 @@
 
 #include <SFML/Graphics.hpp>
 
+/// A rolling barrel obstacle spawned at the top platform.
+/// Moves horizontally along platforms, falls at edges, and can be destroyed.
 class Barrel {
 public:
     Barrel(float x, float y, float vx, int level = 1);

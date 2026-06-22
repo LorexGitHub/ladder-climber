@@ -3,6 +3,8 @@
 
 #include <SFML/Graphics.hpp>
 
+/// The Donkey Kong boss character at the top of the level.
+/// Has a unique sprite per stage (1-8).
 class DonkeyKong {
 public:
     DonkeyKong(float x, float y, int stage);
