@@ -29,11 +29,10 @@ void Game::go_to_title() {
 void Game::play_random_music() {
     music.stop();
     std::vector<std::string> songs;
-    for (int i = 1; i <= 99; i++) {
+    for (int i = 1; i <= 999; i++) {
         std::string p = "assets/music/track" + std::to_string(i) + ".mp3";
         std::ifstream f(p);
         if (f.is_open()) { songs.push_back(p); f.close(); }
-        else break;
     }
     if (!songs.empty()) {
         int idx = std::rand() % songs.size();
@@ -152,36 +151,62 @@ void Game::update(float dt) {
         bool on_any = false;
         for (int pi = 0; pi < (int)platforms.size(); pi++) {
             auto overlap = player.get_bounds().findIntersection(platforms[pi].get_bounds());
-            if (overlap.has_value()) {
-                float player_bottom = player.get_pos().y + 16;
-                float platform_top = platforms[pi].get_bounds().position.y;
-                if (player_bottom >= platform_top && player_bottom < platform_top + 24) {
+            if (!overlap.has_value()) continue;
+
+            auto ppos = platforms[pi].get_bounds();
+            float player_bottom = player.get_pos().y + 16;
+            float platform_top = ppos.position.y;
+
+            if (player_bottom >= platform_top && player_bottom < platform_top + 24 && player.get_vel().y >= 0) {
+                bool on_solid = false;
+                for (int s = 0; s < 10; s++) {
+                    if (!platforms[pi].is_solid(s)) continue;
+                    sf::FloatRect seg = {{ppos.position.x + s * 70.f, ppos.position.y}, {70.f, 14.f}};
+                    if (player.get_bounds().findIntersection(seg).has_value()) {
+                        on_solid = true;
+                        break;
+                    }
+                }
+                if (on_solid) {
+                    float p_left  = ppos.position.x + 12;
+                    float p_right = ppos.position.x + ppos.size.x - 12;
+                    float px = player.get_pos().x;
+                    if (px < p_left)  px = p_left;
+                    if (px > p_right) px = p_right;
+                    player.set_position(px, platform_top);
+                    on_any = true;
+                    break;
+                }
+            }
+        }
+        if (!on_any) {
+            player.set_on_ground(false);
+            for (int pi = 0; pi < (int)platforms.size(); pi++) {
+                auto overlap = player.get_bounds().findIntersection(platforms[pi].get_bounds());
+                if (!overlap.has_value()) continue;
+
+                auto ppos = platforms[pi].get_bounds();
+                float player_head = player.get_pos().y - 32;
+                float platform_bot = ppos.position.y + 14;
+
+                if (player.get_vel().y < 0 && player.get_pos().y > ppos.position.y &&
+                    player_head <= platform_bot && player_head > platform_bot - 16) {
                     bool on_solid = false;
                     for (int s = 0; s < 10; s++) {
                         if (!platforms[pi].is_solid(s)) continue;
-                        auto pos = platforms[pi].get_bounds().position;
-                        sf::FloatRect seg = {{pos.x + s * 70.f, pos.y}, {70.f, 14.f}};
+                        sf::FloatRect seg = {{ppos.position.x + s * 70.f, ppos.position.y}, {70.f, 14.f}};
                         if (player.get_bounds().findIntersection(seg).has_value()) {
                             on_solid = true;
                             break;
                         }
                     }
                     if (on_solid) {
-                        auto ppos = platforms[pi].get_bounds();
-                        float p_left  = ppos.position.x + 12;
-                        float p_right = ppos.position.x + ppos.size.x - 12;
-                        float px = player.get_pos().x;
-                        if (px < p_left)  px = p_left;
-                        if (px > p_right) px = p_right;
-                        player.set_position(px, platform_top);
-                        on_any = true;
+                        player.bump_head(platform_bot + 32);
                         break;
                     }
                 }
             }
         }
-        if (!on_any)
-            player.set_on_ground(false);
     }
 
     // Barrels

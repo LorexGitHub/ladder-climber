@@ -32,6 +32,7 @@ private:
     std::function<void()> play_music_fn;
     std::function<void()> title_fn;
     float pause_cd = 0;
+    bool jump_key_held = false;
 };
 
 #endif

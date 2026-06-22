@@ -183,9 +183,11 @@ void GameController::handle_input(float dt) {
                 player.stop_horizontal();
         }
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) ||
-            sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) ||
-            sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up))
+        bool jump_down = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) ||
+                         sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) ||
+                         sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up);
+        if (jump_down && !jump_key_held)
             player.jump();
+        jump_key_held = jump_down;
     }
 }
