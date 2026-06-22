@@ -280,12 +280,34 @@ void GameView::draw(const GameState& state, const Player& player,
     window.draw(mute_text);
 
     // Lives display
-    sf::Text lives_text(font);
-    lives_text.setString("LIVES: " + std::to_string(state.lives));
-    lives_text.setCharacterSize(14);
-    lives_text.setFillColor(sf::Color::White);
-    lives_text.setPosition({10, 40});
-    window.draw(lives_text);
+    // Hearts for lives at bottom-center
+    {
+        int max_lives = 3;
+        float spacing = 22.f;
+        float start_x = 400 - (max_lives - 1) * spacing * 0.5f;
+        float hy = 725.f;
+        for (int i = 0; i < max_lives; i++) {
+            float hx = start_x + i * spacing;
+            sf::Color hc = i < state.lives ? sf::Color::Red : sf::Color{60, 60, 60};
+            sf::CircleShape c(4.f);
+            c.setOrigin({4, 4});
+            c.setFillColor(hc);
+            c.setOutlineColor(sf::Color::Black);
+            c.setOutlineThickness(1.f);
+            c.setPosition({hx - 4, hy - 2});
+            window.draw(c);
+            c.setPosition({hx + 4, hy - 2});
+            window.draw(c);
+            sf::ConvexShape tri(3);
+            tri.setPoint(0, {hx - 5, hy + 1});
+            tri.setPoint(1, {hx + 5, hy + 1});
+            tri.setPoint(2, {hx, hy + 7});
+            tri.setFillColor(hc);
+            tri.setOutlineColor(sf::Color::Black);
+            tri.setOutlineThickness(1.f);
+            window.draw(tri);
+        }
+    }
 
     // Timer display (middle-top)
     {
@@ -326,7 +348,9 @@ void GameView::draw(const GameState& state, const Player& player,
         window.draw(overlay);
 
         status_text.setString("PAUSED");
-        status_text.setPosition({320, 180});
+        auto stp = status_text.getLocalBounds();
+        status_text.setOrigin({stp.size.x / 2, stp.size.y / 2});
+        status_text.setPosition({400, 200});
         window.draw(status_text);
 
         window.draw(pause_resume_btn);
@@ -340,7 +364,9 @@ void GameView::draw(const GameState& state, const Player& player,
         overlay.setFillColor(sf::Color{0, 0, 0, 150});
         window.draw(overlay);
         status_text.setString("GAME OVER");
-        status_text.setPosition({280, 200});
+        auto stg = status_text.getLocalBounds();
+        status_text.setOrigin({stg.size.x / 2, stg.size.y / 2});
+        status_text.setPosition({400, 220});
         window.draw(status_text);
         menu_btn.setPosition({400, 340});
         menu_btn_text.setString("PLAY AGAIN");
