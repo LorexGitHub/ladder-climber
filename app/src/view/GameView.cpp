@@ -4,6 +4,8 @@
 #include "../model/Platform.hpp"
 #include "../model/Barrel.hpp"
 #include "../model/DonkeyKong.hpp"
+#include "../model/Coin.hpp"
+#include "../model/PowerUp.hpp"
 #include <cmath>
 
 // ── Layout constants for title screen ──
@@ -172,7 +174,9 @@ void GameView::draw(const GameState& state, const Player& player,
                     const std::vector<Platform>& platforms,
                     const std::vector<Ladder>& ladders,
                     const std::vector<std::unique_ptr<Barrel>>& barrels,
-                    const DonkeyKong& dk, float lava_anim) {
+                    const DonkeyKong& dk, float lava_anim,
+                    const std::vector<Coin>& coins,
+                    const PowerUp* powerup) {
 
     window.clear(sf::Color{20, 20, 40});
 
@@ -394,6 +398,12 @@ void GameView::draw(const GameState& state, const Player& player,
     for (auto& b : barrels)
         b->draw(window);
 
+    // Coins
+    for (auto& c : coins) c.draw(window);
+
+    // PowerUp
+    if (powerup) powerup->draw(window);
+
     // Stage number (top-right)
     std::string sstr = std::to_string(state.stage);
     crowns_text.setString(sstr);
@@ -432,6 +442,14 @@ void GameView::draw(const GameState& state, const Player& player,
             tri.setOutlineThickness(1.f);
             window.draw(tri);
         }
+    }
+
+    // Coin counter (top-left)
+    {
+        sf::Text coin_text(font, "COINS: " + std::to_string(state.coins), 18);
+        coin_text.setFillColor(sf::Color::Yellow);
+        coin_text.setPosition({12, 8});
+        window.draw(coin_text);
     }
 
     // Timer display (middle-top)

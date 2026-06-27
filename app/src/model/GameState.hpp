@@ -18,7 +18,10 @@ public:
 
     int stage = 1;
     int crowns = 0;
+    int coins = 0;
     int lives = 3;
+    int last_pickup_stage = 0;
+    bool stage_bonus_collected = false;
     bool paused = false;
     Phase phase = Phase::Title;
     float overall_timer = 0.f;

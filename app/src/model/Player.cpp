@@ -1,5 +1,6 @@
 #include "Player.hpp"
 #include <algorithm>
+#include <cmath>
 
 Player::Player() {
     shape.setFillColor(sf::Color::Green);
@@ -61,6 +62,14 @@ void Player::set_on_ground(bool g) {
 void Player::update(float dt) {
     if (dead) return;
 
+    if (invincible) {
+        invincible_timer -= dt;
+        if (invincible_timer <= 0) {
+            invincible = false;
+            invincible_timer = 0;
+        }
+    }
+
     if (climbing) {
         pos.y += vel.y * dt;
         shape.setPosition(pos);
@@ -120,6 +129,8 @@ sf::FloatRect Player::get_bounds() const {
 }
 
 void Player::draw(sf::RenderWindow& w) const {
+    if (invincible && std::fmod(invincible_timer * 10.f, 1.f) > 0.5f) return;
+
     if (texture.getSize().x > 0) {
         sf::Sprite spr(texture);
         spr.setOrigin({12, 32});

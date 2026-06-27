@@ -19,3 +19,22 @@ TEST(BarrelTest, LandingOnSurface) {
     b.land_on_surface(surface_y);
     EXPECT_EQ(b.get_pos().y, surface_y);
 }
+
+TEST(BarrelTest, KillMarksDead) {
+    Barrel b(100, 200, 180, 0);
+    b.kill();
+    EXPECT_FALSE(b.is_alive());
+}
+
+TEST(BarrelTest, GravityApplies) {
+    Barrel b(100, 200, 0, 0);
+    b.update(0.1f);
+    EXPECT_GT(b.get_pos().y, 200);
+}
+
+TEST(BarrelTest, OutOfBoundsKills) {
+    Barrel b(100, 800, 0, 0);
+    EXPECT_TRUE(b.is_alive());
+    b.update(0.01f);
+    EXPECT_FALSE(b.is_alive());
+}

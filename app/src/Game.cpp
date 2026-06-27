@@ -48,6 +48,10 @@ void Game::start_game() {
     if (state.crowns >= 9)
         state.crowns = 0;
     setup_stage();
+    if (state.stage != state.last_pickup_stage) {
+        spawn_pickups();
+        state.last_pickup_stage = state.stage;
+    }
     state.phase = GameState::Phase::Playing;
     state.paused = false;
     barrels.clear();
@@ -105,6 +109,7 @@ void Game::setup_stage() {
             platforms[pi].set_solid(seg, false);
         }
     }
+
 }
 
 void Game::run() {
@@ -114,7 +119,7 @@ void Game::run() {
         controller.handle_input(dt.asSeconds());
         if (state.phase == GameState::Phase::Playing && !state.paused)
             update(dt.asSeconds());
-        view.draw(state, player, platforms, ladders, barrels, dk, lava_anim);
+        view.draw(state, player, platforms, ladders, barrels, dk, lava_anim, coins, powerup.get());
     }
 }
 
@@ -264,6 +269,29 @@ void Game::update(float dt) {
             ++it;
     }
 
+    // Coins
+    for (auto& c : coins) c.update(dt);
+    for (auto it = coins.begin(); it != coins.end();) {
+        if (it->is_alive() && player.get_bounds().findIntersection(it->get_bounds()).has_value()) {
+            it->collect();
+            state.coins++;
+        }
+        if (it->is_alive()) ++it; else it = coins.erase(it);
+    }
+    if (coins.empty() && !state.stage_bonus_collected) {
+        state.lives++;
+        state.stage_bonus_collected = true;
+    }
+
+    // PowerUp
+    if (powerup) {
+        powerup->update(dt);
+        if (powerup->is_active() && player.get_bounds().findIntersection(powerup->get_bounds()).has_value()) {
+            powerup->collect();
+            player.set_invincible(5.f);
+        }
+    }
+
     check_collisions();
 
     // Lava kills
@@ -303,7 +331,24 @@ void Game::spawn_barrel() {
     barrels.push_back(std::make_unique<Barrel>(60.f, y, state.get_barrel_speed(), 0));
 }
 
+void Game::spawn_pickups() {
+    coins.clear();
+    powerup.reset();
+    state.stage_bonus_collected = false;
+    for (int i = 0; i < 5; i++) {
+        int pi = std::rand() % (int)(platforms.size() - 1) + 1;
+        auto pb = platforms[pi].get_bounds();
+        float x = pb.position.x + 60.f + (std::rand() % 580);
+        coins.emplace_back(x, pb.position.y);
+    }
+    int ppi = std::rand() % (int)(platforms.size() - 1) + 1;
+    auto ppb = platforms[ppi].get_bounds();
+    float px = ppb.position.x + 60.f + (std::rand() % 580);
+    powerup = std::make_unique<PowerUp>(px, ppb.position.y);
+}
+
 void Game::check_collisions() {
+    if (player.is_invincible()) return;
     for (auto& b : barrels) {
         if (player.get_bounds().findIntersection(b->get_bounds()).has_value()) {
             state.lives--;

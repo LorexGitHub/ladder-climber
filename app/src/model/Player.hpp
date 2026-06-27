@@ -20,6 +20,9 @@ public:
     void set_on_ground(bool g);
     void set_dead(bool d) { dead = d; }
     void draw(sf::RenderWindow& w) const;
+    void set_invincible(float duration) { invincible = true; invincible_timer = duration; }
+    bool is_invincible() const { return invincible; }
+    float get_invincible_timer() const { return invincible_timer; }
 
     sf::FloatRect get_bounds() const;
     sf::Vector2f get_pos() const { return pos; }
@@ -46,6 +49,8 @@ private:
     int dir = 0;
     int jumps_left = 2;
     int bunny_count = 0;
+    bool invincible = false;
+    float invincible_timer = 0;
 
     float get_current_speed() const;
 

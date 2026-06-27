@@ -49,6 +49,8 @@ void GameController::handle_input(float dt) {
                 } else if (GameView::title_btn_play().contains(wp)) {
                     state.overall_timer = 0;
                     state.lives = 3;
+                    state.coins = 0;
+                    state.last_pickup_stage = 0;
                     title_fn();
                     start_game_fn();
                 }

@@ -7,7 +7,8 @@ include(FetchContent)
 FetchContent_Declare(SFML
     GIT_REPOSITORY https://github.com/SFML/SFML.git
     GIT_TAG 3.0.0
-    GIT_SHALLOW ON EXCLUDE_FROM_ALL SYSTEM)
+    GIT_SHALLOW ON
+    GIT_PROGRESS ON)
 FetchContent_MakeAvailable(SFML)
 
 FetchContent_Declare(googletest
@@ -24,6 +25,8 @@ add_executable(DonkeyKong
     src/model/Platform.cpp
     src/model/Barrel.cpp
     src/model/DonkeyKong.cpp
+    src/model/Coin.cpp
+    src/model/PowerUp.cpp
     src/view/GameView.cpp
     src/control/GameController.cpp
 )
@@ -37,9 +40,17 @@ add_executable(DonkeyKong_test
     src/model/GameState.cpp
     src/model/Player.cpp
     src/model/Barrel.cpp
+    src/model/Coin.cpp
+    src/model/PowerUp.cpp
+    src/model/Platform.cpp
+    src/model/DonkeyKong.cpp
     test/GameStateTest.cpp
     test/PlayerTest.cpp
     test/BarrelTest.cpp
+    test/CoinTest.cpp
+    test/PowerUpTest.cpp
+    test/PlatformTest.cpp
+    test/DonkeyKongTest.cpp
 )
 target_include_directories(DonkeyKong_test PRIVATE src)
 target_compile_features(DonkeyKong_test PRIVATE cxx_std_20)

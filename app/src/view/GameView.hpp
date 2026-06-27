@@ -11,6 +11,8 @@ class Platform;
 struct Ladder;
 class Barrel;
 class DonkeyKong;
+class Coin;
+class PowerUp;
 class GameState;
 
 class GameView {
@@ -21,7 +23,9 @@ public:
               const std::vector<Platform>& platforms,
               const std::vector<Ladder>& ladders,
               const std::vector<std::unique_ptr<Barrel>>& barrels,
-              const DonkeyKong& dk, float lava_anim);
+              const DonkeyKong& dk, float lava_anim,
+              const std::vector<Coin>& coins,
+              const PowerUp* powerup);
 
     sf::FloatRect get_menu_btn_bounds() const;
     sf::FloatRect get_pause_resume_btn_bounds() const;

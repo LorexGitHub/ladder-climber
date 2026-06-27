@@ -15,19 +15,20 @@ A C++ Donkey Kong remake with 9 stages, 8 unique bosses, procedural level genera
 
 ## Controls
 
-| Key | Action |
-|-----|--------|
-| ← → / A D | Move left/right |
-| Space / W / ↑ | Jump |
-| ↑ / W | Climb up ladder |
-| ↓ / S | Climb down ladder |
-| Esc / P | Pause |
-| M | Toggle mute |
-| U / I | Skip to previous / next stage (debug) |
+| Key           | Action                                |
+| ------------- | ------------------------------------- |
+| ← → / A D     | Move left/right                       |
+| Space / W / ↑ | Jump                                  |
+| ↑ / W         | Climb up ladder                       |
+| ↓ / S         | Climb down ladder                     |
+| Esc / P       | Pause                                 |
+| M             | Toggle mute                           |
+| U / I         | Skip to previous / next stage (debug) |
 
 ## Architecture (MVC)
 
 **Model** (`src/model/`)
+
 - `Player` — position, velocity, jump/climb state, animation
 - `Platform` — segmented platforms with destructible holes; `Ladder` struct
 - `Barrel` — rolling obstacle with platform collision
@@ -35,22 +36,27 @@ A C++ Donkey Kong remake with 9 stages, 8 unique bosses, procedural level genera
 - `GameState` — stage, crowns, lives, timers, records, phase enum
 
 **View** (`src/view/`)
+
 - `GameView` — owns the `sf::RenderWindow`, fonts, textures, and all `draw()` logic
 
 **Control** (`src/control/`)
+
 - `GameController` — processes keyboard/mouse input, modifies model via callbacks
 
 **Coordinator** (`src/Game.hpp/.cpp`)
+
 - `Game` — owns Model objects, View, Controller; runs the game loop and core update logic
 
 ## Building
 
 ### Prerequisites
+
 - CMake ≥ 3.22
 - C++20 compiler (GCC, Clang, or MSVC)
 - SFML 3.0 + GoogleTest (downloaded automatically by CMake)
 
 ### System dependencies (Linux/WSL)
+
 ```bash
 sudo apt install build-essential cmake \
   libx11-dev libxrandr-dev libxcursor-dev libxi-dev \
@@ -59,6 +65,7 @@ sudo apt install build-essential cmake \
 ```
 
 ### Build & run
+
 ```bash
 cd app
 mkdir build && cd build
@@ -68,6 +75,7 @@ LD_LIBRARY_PATH=bin ./bin/DonkeyKong
 ```
 
 ### Tests
+
 ```bash
 cd app/build
 cmake --build . -j4
@@ -75,6 +83,7 @@ LD_LIBRARY_PATH=bin ./bin/DonkeyKong_test
 ```
 
 ## File structure
+
 ```
 donkey-kong/
 ├── app/
@@ -97,7 +106,11 @@ donkey-kong/
 │   ├── test/
 │   │   ├── GameStateTest.cpp
 │   │   ├── PlayerTest.cpp
-│   │   └── BarrelTest.cpp
+│   │   ├── BarrelTest.cpp
+│   │   ├── CoinTest.cpp
+│   │   ├── PowerUpTest.cpp
+│   │   ├── PlatformTest.cpp
+│   │   └── DonkeyKongTest.cpp
 │   └── assets/
 │       ├── sprites/    # generated .png files
 │       ├── music/      # .mp3 files
@@ -105,8 +118,59 @@ donkey-kong/
 └── README.md
 ```
 
+## Docker
+
+### Build the image
+
+```bash
+docker build -t donkey-kong .
+```
+
+### Run the game (Linux — native, not WSL)
+
+```bash
+docker run --rm \
+    -e DISPLAY=$DISPLAY \
+    -e PULSE_SERVER=unix:/run/user/1000/pulse/native \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v /run/user/$(id -u)/pulse:/run/user/1000/pulse \
+    --network host \
+    donkey-kong
+```
+
+### Run the game (WSLg)
+
+> **Prerequisite:** Enable Docker Desktop WSL 2 integration for your distro
+> (Settings → Resources → WSL Integration). If `docker` is not found, use `docker.exe` instead.
+
+```bash
+docker run --rm \
+    -e DISPLAY=$DISPLAY \
+    -e PULSE_SERVER=unix:/mnt/wslg/PulseServer \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v /mnt/wslg:/mnt/wslg \
+    --network host \
+    donkey-kong
+```
+
+### Run the game (Windows — VcXsrv or X410)
+
+First install and launch [VcXsrv](https://sourceforge.net/projects/vcxsrv/) (free).
+In the display settings, check **"Disable access control"**. Then:
+
+```powershell
+docker run --rm -e DISPLAY=host.docker.internal:0 donkey-kong
+```
+
+### Run tests in Docker
+
+```bash
+docker run --rm donkey-kong /bin/bash -c "cd /project/app && xvfb-run ./build/bin/DonkeyKong_test"
+```
+
 ## Dependencies
 
 All libraries pulled automatically by CMake via FetchContent:
+
 - [SFML 3.0](https://github.com/SFML/SFML) — windowing, graphics, audio, input
 - [GoogleTest](https://github.com/google/googletest) — unit tests

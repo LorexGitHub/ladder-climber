@@ -22,6 +22,43 @@ TEST(PlayerTest, ClimbingStopsHorizontal) {
     EXPECT_EQ(p.get_pos().x, x0);
 }
 
+TEST(PlayerTest, BumpHeadStopsAscent) {
+    Player p;
+    p.set_position(100, 200);
+    p.jump();
+    p.bump_head(200);
+    EXPECT_EQ(p.get_vel().y, 0);
+    EXPECT_EQ(p.get_pos().y, 200);
+}
+
+TEST(PlayerTest, DoubleJumpDecrementsJumpsLeft) {
+    Player p;
+    p.set_position(100, 200);
+    p.jump();
+    p.jump();
+    EXPECT_EQ(p.get_jumps_left(), 0);
+}
+
+TEST(PlayerTest, InvincibilityTimerDecays) {
+    Player p;
+    p.set_invincible(2.f);
+    EXPECT_TRUE(p.is_invincible());
+    EXPECT_FLOAT_EQ(p.get_invincible_timer(), 2.f);
+    p.update(1.5f);
+    EXPECT_TRUE(p.is_invincible());
+    EXPECT_LT(p.get_invincible_timer(), 2.f);
+    p.update(1.f);
+    EXPECT_FALSE(p.is_invincible());
+}
+
+TEST(PlayerTest, MoveLeftMovesNegative) {
+    Player p;
+    p.set_position(400, 200);
+    p.move_left();
+    p.update(0.1f);
+    EXPECT_LT(p.get_pos().x, 400);
+}
+
 TEST(PlayerTest, FallsDownDueToGravity) {
     Player p;
     p.set_position(100, 200);

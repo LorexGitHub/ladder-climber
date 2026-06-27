@@ -11,6 +11,8 @@
 #include "model/Platform.hpp"
 #include "model/Barrel.hpp"
 #include "model/DonkeyKong.hpp"
+#include "model/Coin.hpp"
+#include "model/PowerUp.hpp"
 #include "view/GameView.hpp"
 #include "control/GameController.hpp"
 
@@ -28,6 +30,7 @@ private:
     void go_to_title();
     void setup_stage();
     void spawn_barrel();
+    void spawn_pickups();
     void check_collisions();
     void play_random_music();
 
@@ -38,6 +41,8 @@ private:
     std::vector<Platform> platforms;
     std::vector<Ladder> ladders;
     std::vector<std::unique_ptr<Barrel>> barrels;
+    std::vector<Coin> coins;
+    std::unique_ptr<PowerUp> powerup;
     float barrel_timer = 0;
     float lava_anim = 0;
     sf::Music music;
