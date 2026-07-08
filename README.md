@@ -2,6 +2,13 @@
 
 A C++ Donkey Kong remake with 9 stages, 8 unique bosses, procedural level generation, and a music system. Built with SFML 3.0 following the Model-View-Controller pattern.
 
+## Demo
+
+
+https://github.com/user-attachments/assets/2963be98-4ee4-4741-a178-9f643afc5b24
+
+
+
 ## Gameplay
 
 - Climb 9 stages by navigating platforms and ladders while dodging barrels
