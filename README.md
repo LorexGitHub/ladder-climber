@@ -1,4 +1,4 @@
-# Lader Climber
+# Ladder Climber
 
 A C++ Donkey Kong remake with 9 stages, 8 unique bosses, procedural level generation, and a music system. Built with SFML 3.0 following the Model-View-Controller pattern.
 
